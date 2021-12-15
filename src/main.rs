@@ -1,11 +1,11 @@
-#[macro_use]
+// #[macro_use]
 // mod load;
 // mod macros;
 // mod models;
 // mod train;
 // mod utils;
-use std::env;
 use lsph::Config;
+use std::env;
 use std::process;
 
 fn main() {

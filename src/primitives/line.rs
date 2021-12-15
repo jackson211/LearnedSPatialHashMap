@@ -1,5 +1,6 @@
+use crate::primitives::point::Point;
 
-struct Line{
-    x:Point,
-    y:Point;
-};
+pub struct Line<T> {
+    y: Point<T>,
+    x: Point<T>,
+}

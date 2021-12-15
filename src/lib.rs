@@ -1,5 +1,7 @@
+mod primitives;
+
+use primitives::point::Point;
 use std::error::Error;
-use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -37,26 +39,10 @@ pub fn read_config(config: Config) -> Result<(), Box<dyn Error>> {
         let lat = tokens[0].parse::<f64>().unwrap();
         let lng = tokens[1].parse::<f64>().unwrap();
         let key = tokens[2].parse::<f64>().unwrap();
-        println!("{}", &lat);
-        println!("{}", &lng);
+        let p = Point { x: lat, y: lng };
+        println!("{}", &p);
         println!("{}", &key);
     }
 
-    // let mut x: Vec<f64> = vec![];
-    // let mut y: Vec<f64> = vec![];
-    // for line in reader.lines() {
-    //     let line_string = match line {
-    //         Ok(line_string) => line_string,
-    //         Err(e) => return Err(e),
-    //     };
-
-    //     let tokens: Vec<&str> = line_string.split(",").collect();
-    //     let lat = tokens[0].parse::<f64>().unwrap();
-    //     let lng = tokens[1].parse::<f64>().unwrap();
-    //     let key = tokens[2].parse::<f64>().unwrap();
-    //     let hash_coor = encode_int(lat, lng) as f64;
-    //     x.push(hash_coor);
-    //     y.push(key);
-    // }
     Ok(())
 }

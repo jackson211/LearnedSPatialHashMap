@@ -1,2 +1,2 @@
-mod line;
-mod point;
+pub mod line;
+pub mod point;
