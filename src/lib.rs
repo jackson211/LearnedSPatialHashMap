@@ -40,6 +40,7 @@ pub fn read_config(config: Config) -> Result<(), Box<dyn Error>> {
         let lng = tokens[1].parse::<f64>().unwrap();
         //let key = tokens[2].parse::<f64>().unwrap();
         let p = Point::new(lat, lng);
+        println!("{}", p);
     }
 
     Ok(())
