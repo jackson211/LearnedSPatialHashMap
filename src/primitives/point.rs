@@ -1,18 +1,19 @@
+use num_traits::float::Float;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct Point<T> {
+pub struct Point<T: Float> {
     pub x: T,
     pub y: T,
 }
 
-impl<T> Point<T> {
+impl<T: Float> Point<T> {
     pub fn new(x: T, y: T) -> Point<T> {
         Point { x: x, y: y }
     }
 }
 
-impl<T> fmt::Display for Point<T>
+impl<T: Float> fmt::Display for Point<T>
 where
     T: fmt::Display,
 {

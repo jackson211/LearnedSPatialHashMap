@@ -38,10 +38,8 @@ pub fn read_config(config: Config) -> Result<(), Box<dyn Error>> {
         let tokens: Vec<&str> = line.split(",").collect();
         let lat = tokens[0].parse::<f64>().unwrap();
         let lng = tokens[1].parse::<f64>().unwrap();
-        let key = tokens[2].parse::<f64>().unwrap();
-        let p = Point { x: lat, y: lng };
-        println!("{}", &p);
-        println!("{}", &key);
+        //let key = tokens[2].parse::<f64>().unwrap();
+        let p = Point::new(lat, lng);
     }
 
     Ok(())
