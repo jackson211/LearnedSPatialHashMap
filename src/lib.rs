@@ -1,5 +1,7 @@
+mod algorithm;
 mod primitives;
 
+use algorithm::lsph::RawBucket;
 use primitives::point::Point;
 use std::error::Error;
 use std::fs::File;

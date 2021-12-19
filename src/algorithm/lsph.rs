@@ -1,8 +1,19 @@
 static EMPTY_BUCKET: u64 = 0u64;
 
-struct RawTable<K, V> {
+pub struct RawTable {
     capacity: usize,
     size: usize,
-    key: *mut K,
-    value: *mut V,
+}
+
+pub struct RawBucket<K, V> {
+    hash: usize,
+    pair: *const (K, V),
+    idx: usize,
+}
+
+impl<K, V> Copy for RawBucket<K, V> {}
+impl<K, V> Clone for RawBucket<K, V> {
+    fn clone(&self) -> RawBucket<K, V> {
+        *self
+    }
 }
