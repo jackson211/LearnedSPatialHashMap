@@ -9,7 +9,7 @@ pub struct Point<T: Float> {
 
 impl<T: Float> Point<T> {
     pub fn new(x: T, y: T) -> Point<T> {
-        Point { x: x, y: y }
+        Point { x, y }
     }
 }
 

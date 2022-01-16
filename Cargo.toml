@@ -12,4 +12,4 @@ failure = "0.1.3"
 failure_derive = "0.1.3"
 log = "0.4"
 num-traits = "0.2"
-
+hashbrown = { version = "0.11.2", features = ["raw"] }

@@ -1,5 +1,5 @@
+pub mod map;
 // mod linear;
-pub mod lsph;
 
 // use crate::utils::stats::*;
 // pub use linear::LinearModel;
