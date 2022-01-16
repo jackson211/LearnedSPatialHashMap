@@ -1,8 +1,7 @@
+extern crate geo_types;
 mod algorithm;
 
-mod primitives;
-
-use primitives::point::Point;
+use geo_types::Point;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
