@@ -1,6 +1,7 @@
 pub mod map;
 // mod linear;
 
+use geo_types::Point;
 // use crate::utils::stats::*;
 // pub use linear::LinearModel;
 // pub use linear::LogLinearModel;
@@ -13,14 +14,14 @@ pub mod map;
 //     fn evaluate(&self, x_test: &Vec<f64>, y_test: &Vec<f64>) -> f64;
 // }
 //
-// #[derive(Clone, Debug)]
-// pub struct ModelData {
-//     // x_values: Vec<f64>,
-//     // y_values: Vec<f64>,
-//     idx: usize,
-//     data: Vec<(f64, f64)>,
-//     scaling_factor: f64,
-// }
+#[derive(Clone, Debug)]
+pub struct ModelData {
+    // x_values: Vec<f64>,
+    // y_values: Vec<f64>,
+    idx: usize,
+    data: Vec<Point<f64>>,
+    scaling_factor: f64,
+}
 //
 // impl ModelData {
 //     pub fn new(x_values: Vec<f64>, y_values: Vec<f64>) -> ModelData {
