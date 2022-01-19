@@ -1,5 +1,3 @@
-use crate::models::*;
-
 fn linear_fn(x_values: &Vec<f64>, y_values: &Vec<f64>) -> (f64, f64) {
     let coefficient: f64 = covariance(x_values, y_values) / variance(x_values);
     let intercept: f64 = mean(y_values) - coefficient * mean(x_values);

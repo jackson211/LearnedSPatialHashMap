@@ -3,7 +3,7 @@ use core::mem;
 use hashbrown::hash_map::DefaultHashBuilder;
 use hashbrown::raw::RawTable;
 use std::borrow::Borrow;
-
+#[derive(Default)]
 pub struct LearnedHashMap<K, V, S = DefaultHashBuilder> {
     hash_builder: S,
     table: RawTable<(K, V)>,
@@ -120,9 +120,9 @@ impl<K: Hash + Eq, V, S: BuildHasher> LearnedHashMap<K, V, S> {
 #[cfg(test)]
 mod tests {
     use crate::algorithm::map::LearnedHashMap;
-    use geo_types::Point;
+    use geo_types::{Coordinate, Line, LineString, Point, Polygon};
     #[test]
-    fn test_initialize_map() {
+    fn test_initialize_map_with_points() {
         let mut map: LearnedHashMap<u64, Point<f64>> = LearnedHashMap::<u64, Point<f64>>::new();
         let a: Point<f64> = (0., 1.).into();
         let b: Point<f64> = (1., 0.).into();
@@ -132,5 +132,41 @@ mod tests {
         map.insert(id_b, b);
         assert_eq!(map.get(&id_a).unwrap(), &a);
         assert_eq!(map.get(&id_b).unwrap(), &b);
+    }
+
+    #[test]
+    fn test_initialize_map_with_lines() {
+        let mut map: LearnedHashMap<u64, Line<f64>> = LearnedHashMap::<u64, Line<f64>>::new();
+        let a: Line<f64> = Line::new(Coordinate { x: 0., y: 1. }, Coordinate { x: 1., y: 2. });
+        let b: Line<f64> = Line::new(Coordinate { x: 0., y: 0. }, Coordinate { x: 2., y: 1. });
+        let id_a: u64 = 1;
+        let id_b: u64 = 2;
+        map.insert(id_a, a);
+        map.insert(id_b, b);
+        assert_eq!(map.get(&id_a).unwrap(), &a);
+        assert_eq!(map.get(&id_b).unwrap(), &b);
+    }
+
+    #[test]
+    fn test_initialize_map_with_polygon() {
+        let mut map: LearnedHashMap<u64, Polygon<f64>> = LearnedHashMap::<u64, Polygon<f64>>::new();
+        let a: Polygon<f64> = Polygon::new(
+            LineString::from(vec![(0., 0.), (1., 1.), (1., 0.), (0., 0.)]),
+            vec![],
+        );
+        let b: Polygon<f64> = Polygon::new(
+            LineString::from(vec![(0., 0.), (1., 2.), (1., 0.), (0., 0.)]),
+            vec![],
+        );
+        // Polygon doesn't impl Copy trait
+        let a_clone = a.clone();
+        let b_clone = b.clone();
+
+        let id_a: u64 = 1;
+        let id_b: u64 = 2;
+        map.insert(id_a, a);
+        map.insert(id_b, b);
+        assert_eq!(map.get(&id_a).unwrap(), &a_clone);
+        assert_eq!(map.get(&id_b).unwrap(), &b_clone);
     }
 }
