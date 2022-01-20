@@ -46,18 +46,3 @@ impl<K, V, S> LearnedHashMap<K, V, S> {
         }
     }
 }
-
-impl<K, V, S> LearnedHashMap<K, V, S> {
-    pub const fn with_hasher(hash_builder: S) -> Self {
-        Self {
-            hash_builder,
-            table: RawTable::new(),
-        }
-    }
-    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
-        Self {
-            hash_builder,
-            table: RawTable::with_capacity(capacity),
-        }
-    }
-}
