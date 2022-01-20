@@ -3,6 +3,32 @@ use core::mem;
 use hashbrown::hash_map::DefaultHashBuilder;
 use hashbrown::raw::RawTable;
 use std::borrow::Borrow;
+
+pub struct LearnedHasher {
+    state: u64,
+}
+
+impl std::hash::Hasher for LearnedHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.state = self.state.rotate_left(8) ^ u64::from(byte);
+        }
+    }
+
+    fn finish(&self) -> u64 {
+        self.state
+    }
+}
+
+pub struct BuildLearnedHasher;
+
+impl std::hash::BuildHasher for BuildLearnedHasher {
+    type Hasher = LearnedHasher;
+    fn build_hasher(&self) -> LearnedHasher {
+        LearnedHasher { state: 0 }
+    }
+}
+
 #[derive(Default)]
 pub struct LearnedHashMap<K, V, S = DefaultHashBuilder> {
     hash_builder: S,
@@ -119,7 +145,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LearnedHashMap<K, V, S> {
 
 #[cfg(test)]
 mod tests {
-    use crate::algorithm::map::LearnedHashMap;
+    use crate::algorithm::map::{BuildLearnedHasher, LearnedHashMap};
     use geo_types::{Coordinate, Line, LineString, Point, Polygon};
     #[test]
     fn test_initialize_map_with_points() {
@@ -168,5 +194,19 @@ mod tests {
         map.insert(id_b, b);
         assert_eq!(map.get(&id_a).unwrap(), &a_clone);
         assert_eq!(map.get(&id_b).unwrap(), &b_clone);
+    }
+
+    #[test]
+    fn test_map_with_hasher() {
+        let mut map: LearnedHashMap<u64, Point<f64>, BuildLearnedHasher> =
+            LearnedHashMap::<u64, Point<f64>, BuildLearnedHasher>::with_hasher(BuildLearnedHasher);
+        let a: Point<f64> = (0., 1.).into();
+        let b: Point<f64> = (1., 0.).into();
+        let id_a: u64 = 1;
+        let id_b: u64 = 2;
+        map.insert(id_a, a);
+        map.insert(id_b, b);
+        assert_eq!(map.get(&id_a).unwrap(), &a);
+        assert_eq!(map.get(&id_b).unwrap(), &b);
     }
 }
