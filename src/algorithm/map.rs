@@ -148,7 +148,7 @@ mod tests {
     use crate::algorithm::map::{BuildLearnedHasher, LearnedHashMap};
     use geo_types::{Coordinate, Line, LineString, Point, Polygon};
     #[test]
-    fn test_initialize_map_with_points() {
+    fn initialize_map_with_points() {
         let mut map: LearnedHashMap<u64, Point<f64>> = LearnedHashMap::<u64, Point<f64>>::new();
         let a: Point<f64> = (0., 1.).into();
         let b: Point<f64> = (1., 0.).into();
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn test_initialize_map_with_lines() {
+    fn initialize_map_with_lines() {
         let mut map: LearnedHashMap<u64, Line<f64>> = LearnedHashMap::<u64, Line<f64>>::new();
         let a: Line<f64> = Line::new(Coordinate { x: 0., y: 1. }, Coordinate { x: 1., y: 2. });
         let b: Line<f64> = Line::new(Coordinate { x: 0., y: 0. }, Coordinate { x: 2., y: 1. });
@@ -174,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn test_initialize_map_with_polygon() {
+    fn initialize_map_with_polygon() {
         let mut map: LearnedHashMap<u64, Polygon<f64>> = LearnedHashMap::<u64, Polygon<f64>>::new();
         let a: Polygon<f64> = Polygon::new(
             LineString::from(vec![(0., 0.), (1., 1.), (1., 0.), (0., 0.)]),
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn test_map_with_hasher() {
+    fn map_with_hasher() {
         let mut map: LearnedHashMap<u64, Point<f64>, BuildLearnedHasher> =
             LearnedHashMap::<u64, Point<f64>, BuildLearnedHasher>::with_hasher(BuildLearnedHasher);
         let a: Point<f64> = (0., 1.).into();

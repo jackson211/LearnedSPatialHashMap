@@ -9,3 +9,4 @@ edition = "2021"
 geo-types = "0.7.2"
 geohash = { path = "geohash" }
 hashbrown = { version = "0.11.2", features = ["raw"] }
+rayon = "1.5.1"
