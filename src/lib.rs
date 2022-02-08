@@ -1,6 +1,7 @@
 extern crate geo_types;
 mod algorithm;
 
+use crate::algorithm::linkedlist::List;
 use geo_types::Point;
 use std::error::Error;
 use std::fs::File;
@@ -54,5 +55,6 @@ fn load_data(filepath: &str) -> Result<Vec<Point<f64>>, Box<dyn Error>> {
         count += 1;
     }
     println!("Number of points: {}", count);
+
     Ok(points)
 }
