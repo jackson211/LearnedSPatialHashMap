@@ -1,33 +1,9 @@
+use crate::algorithm::hasher::{BuildLearnedHasher, LearnedHasher};
 use core::hash::{BuildHasher, Hash};
 use core::mem;
 use hashbrown::hash_map::DefaultHashBuilder;
 use hashbrown::raw::RawTable;
 use std::borrow::Borrow;
-
-pub struct LearnedHasher {
-    state: u64,
-}
-
-impl std::hash::Hasher for LearnedHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        for &byte in bytes {
-            self.state = self.state.rotate_left(8) ^ u64::from(byte);
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        self.state
-    }
-}
-
-pub struct BuildLearnedHasher;
-
-impl std::hash::BuildHasher for BuildLearnedHasher {
-    type Hasher = LearnedHasher;
-    fn build_hasher(&self) -> LearnedHasher {
-        LearnedHasher { state: 0 }
-    }
-}
 
 #[derive(Default)]
 pub struct LearnedHashMap<K, V, S = DefaultHashBuilder> {
@@ -39,7 +15,7 @@ pub struct LearnedHashMap<K, V, S = DefaultHashBuilder> {
 // pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
 // where
 //     K: Hash,
-//     S: BuildHasher,
+//     S: BuidHasher,
 // {
 //     hash_builder.hash_one(val)
 // }
@@ -107,6 +83,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LearnedHashMap<K, V, S> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = make_hash::<K, _, S>(&self.hash_builder, &k);
+        println!("inserting with hash {:?}", hash);
         if let Some((_, item)) = self.table.get_mut(hash, equivalent_key(&k)) {
             Some(mem::replace(item, v))
         } else {
@@ -184,16 +161,13 @@ mod tests {
             LineString::from(vec![(0., 0.), (1., 2.), (1., 0.), (0., 0.)]),
             vec![],
         );
-        // Polygon doesn't impl Copy trait
-        let a_clone = a.clone();
-        let b_clone = b.clone();
 
         let id_a: u64 = 1;
         let id_b: u64 = 2;
-        map.insert(id_a, a);
-        map.insert(id_b, b);
-        assert_eq!(map.get(&id_a).unwrap(), &a_clone);
-        assert_eq!(map.get(&id_b).unwrap(), &b_clone);
+        map.insert(id_a, a.clone());
+        map.insert(id_b, b.clone());
+        assert_eq!(map.get(&id_a).unwrap(), &a);
+        assert_eq!(map.get(&id_b).unwrap(), &b);
     }
 
     #[test]

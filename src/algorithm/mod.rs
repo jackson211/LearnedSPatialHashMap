@@ -7,10 +7,13 @@ macro_rules! assert_delta {
     };
 }
 
+pub mod hasher;
 pub mod linear;
 pub mod linkedlist;
 pub mod map;
+pub mod map2;
 mod stats;
+pub mod third;
 // mod linear;
 
 // use crate::utils::stats::*;
