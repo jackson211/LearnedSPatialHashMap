@@ -16,6 +16,7 @@ mod stats;
 pub mod third;
 // mod linear;
 
+use geo_types::Point;
 // use crate::utils::stats::*;
 // pub use linear::LinearModel;
 // pub use linear::LogLinearModel;
