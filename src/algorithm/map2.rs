@@ -1,35 +1,20 @@
+use crate::algorithm::hasher::{LearnedHasher, LearnedHasherBuilder};
 use std::borrow::Borrow;
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::mem;
-
-const INITIAL_NBUCKETS: usize = 1;
-
-pub struct HashMap<K, V> {
-    buckets: Vec<Vec<(K, V)>>,
-    items: usize,
-}
-
-impl<K, V> HashMap<K, V> {
-    pub fn new() -> Self {
-        HashMap {
-            buckets: Vec::new(),
-            items: 0,
-        }
-    }
-}
 
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     entry: &'a mut (K, V),
 }
 
-pub struct VacantEntry<'a, K: 'a, V: 'a> {
+pub struct VacantEntry<'a, K: 'a, V: 'a, S: 'a> {
     key: K,
-    map: &'a mut HashMap<K, V>,
+    map: &'a mut HashMap<K, V, S>,
     bucket: usize,
 }
 
-impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
+impl<'a, K: 'a, V: 'a, S: 'a> VacantEntry<'a, K, V, S> {
     pub fn insert(self, value: V) -> &'a mut V
     where
         K: Hash + Eq,
@@ -40,12 +25,12 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     }
 }
 
-pub enum Entry<'a, K: 'a, V: 'a> {
+pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
     Occupied(OccupiedEntry<'a, K, V>),
-    Vacant(VacantEntry<'a, K, V>),
+    Vacant(VacantEntry<'a, K, V, S>),
 }
 
-impl<'a, K, V> Entry<'a, K, V>
+impl<'a, K, V, S> Entry<'a, K, V, S>
 where
     K: Hash + Eq,
 {
@@ -74,10 +59,51 @@ where
     }
 }
 
-impl<K, V> HashMap<K, V>
+/// HashMap
+
+const INITIAL_NBUCKETS: usize = 1;
+#[derive(Debug, Default)]
+pub struct HashMap<K, V, S = LearnedHasherBuilder> {
+    hash_builder: S,
+    buckets: Vec<Vec<(K, V)>>,
+    items: usize,
+}
+
+impl<K, V, S> HashMap<K, V, S>
 where
     K: Hash + Eq,
+    S: BuildHasher + Default,
 {
+    pub fn new() -> HashMap<K, V, S> {
+        HashMap {
+            hash_builder: Default::default(),
+            buckets: Vec::new(),
+            items: 0,
+        }
+    }
+}
+
+impl<K, V, S> HashMap<K, V, S>
+where
+    K: Hash + Eq,
+    S: BuildHasher,
+{
+    pub fn with_hasher(hash_builder: S) -> Self {
+        Self {
+            hash_builder,
+            buckets: Vec::new(),
+            items: 0,
+        }
+    }
+
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        Self {
+            hash_builder,
+            buckets: Vec::with_capacity(capacity),
+            items: 0,
+        }
+    }
+
     fn bucket<Q>(&self, key: &Q) -> Option<usize>
     where
         K: Borrow<Q>,
@@ -86,12 +112,12 @@ where
         if self.buckets.is_empty() {
             return None;
         }
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = LearnedHasher::new();
         key.hash(&mut hasher);
         Some((hasher.finish() % self.buckets.len() as u64) as usize)
     }
 
-    pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V> {
+    pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V, S> {
         if self.buckets.is_empty() || self.items > 3 * self.buckets.len() / 4 {
             self.resize();
         }
@@ -293,7 +319,7 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut map = HashMap::new();
+        let mut map: HashMap<&str, i32, LearnedHasherBuilder> = HashMap::new();
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
         map.insert("foo", 42);

@@ -1,17 +1,17 @@
-use crate::algorithm::hasher::{BuildLearnedHasher, LearnedHasher};
+use crate::algorithm::hasher::LearnedHasherBuilder;
 use core::hash::{BuildHasher, Hash};
 use core::mem;
-use hashbrown::hash_map::DefaultHashBuilder;
-use hashbrown::raw::RawTable;
 use std::borrow::Borrow;
 
+const INITIAL_NBUCKETS: usize = 1;
+
 #[derive(Default)]
-pub struct LearnedHashMap<K, V, S = DefaultHashBuilder> {
+pub struct LearnedHashMap<K, V, S = LearnedHasherBuilder> {
     hash_builder: S,
-    table: RawTable<(K, V)>,
+    table: Vec<Vec<(K, V)>>,
+    items: usize,
 }
 
-// #[cfg_attr(feature = "inline-more", inline)]
 // pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
 // where
 //     K: Hash,
@@ -21,7 +21,6 @@ pub struct LearnedHashMap<K, V, S = DefaultHashBuilder> {
 // }
 
 /// copy of hashbrown::hash_map::make_hash()
-#[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
 where
     K: Borrow<Q>,
@@ -45,55 +44,62 @@ where
     move |val| make_hash::<K, Q, S>(hash_builder, &val.0)
 }
 
-#[cfg_attr(feature = "inline-more", inline)]
-fn equivalent_key<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
-where
-    K: Borrow<Q>,
-    Q: ?Sized + Eq,
-{
-    move |x| k.eq(x.0.borrow())
-}
-
 impl<K: Hash + Eq, V, S: BuildHasher + Default> LearnedHashMap<K, V, S> {
     pub fn new() -> LearnedHashMap<K, V, S> {
         Self {
             hash_builder: Default::default(),
-            table: RawTable::new(),
+            table: Vec::new(),
+            items: 0,
         }
     }
 }
 
 impl<K: Hash + Eq, V, S: BuildHasher> LearnedHashMap<K, V, S> {
-    #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_hasher(hash_builder: S) -> Self {
         Self {
             hash_builder,
-            table: RawTable::new(),
+            table: Vec::new(),
+            items: 0,
         }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
             hash_builder,
-            table: RawTable::with_capacity(capacity),
+            table: Vec::with_capacity(capacity),
+            items: 0,
         }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let hash = make_hash::<K, _, S>(&self.hash_builder, &k);
-        println!("inserting with hash {:?}", hash);
-        if let Some((_, item)) = self.table.get_mut(hash, equivalent_key(&k)) {
-            Some(mem::replace(item, v))
-        } else {
-            self.table
-                .insert(hash, (k, v), make_hasher::<K, _, V, S>(&self.hash_builder));
-            None
+        if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
+            self.resize();
         }
+        let hash = make_hash::<K, _, S>(&self.hash_builder, &k) as usize;
+        println!("inserting with hash {:?}", hash);
+        // if let Some((_, item)) = self.table.get_mut(hash, equivalent_key(&k)) {
+        //     Some(mem::replace(item, v))
+        // } else {
+        //     self.table
+        //         .insert(hash, (k, v), make_hasher::<K, _, V, S>(&self.hash_builder));
+        //     None
+        // }
+
+        // Find the bucket at hash location
+        let bucket = &mut self.table[hash];
+
+        // Find the key at second bucket
+        for &mut (ref ek, ref mut ev) in bucket.iter_mut() {
+            if ek == &k {
+                return Some(mem::replace(ev, v));
+            }
+        }
+
+        self.items += 1;
+        bucket.push((k, v));
+        None
     }
 
-    #[inline]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
@@ -106,23 +112,166 @@ impl<K: Hash + Eq, V, S: BuildHasher> LearnedHashMap<K, V, S> {
         }
     }
 
-    fn get_inner<Q: ?Sized>(&self, k: &Q) -> Option<&(K, V)>
+    fn get_inner<Q>(&self, k: &Q) -> Option<&(K, V)>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
-        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
-        self.table.get(hash, equivalent_key(k))
+        let hash = make_hash::<K, Q, S>(&self.hash_builder, k) as usize;
+        // self.table.get(hash, equivalent_key(k))
+
+        self.table[hash]
+            .iter()
+            .find(|&(ref ekey, _)| ekey.borrow() == k)
+            .map(|i| i)
+    }
+
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq + ?Sized,
+    {
+        self.get(key).is_some()
+    }
+
+    pub fn remove<Q>(&mut self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq + ?Sized,
+    {
+        let hash = make_hash::<K, Q, S>(&self.hash_builder, k) as usize;
+        let bucket = &mut self.table[hash];
+        let i = bucket
+            .iter()
+            .position(|&(ref ekey, _)| ekey.borrow() == k)?;
+        self.items -= 1;
+        Some(bucket.swap_remove(i).1)
     }
 
     pub fn len(&self) -> usize {
-        self.table.len()
+        self.items
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items == 0
+    }
+    fn resize(&mut self) {
+        let target_size = match self.table.len() {
+            0 => INITIAL_NBUCKETS,
+            n => 2 * n,
+        };
+
+        let mut new_table = Vec::with_capacity(target_size);
+        new_table.extend((0..target_size).map(|_| Vec::new()));
+
+        for (key, value) in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
+            //let mut hasher = DefaultHasher::new();
+            //key.hash(&mut hasher);
+            let hash = make_hash::<K, _, S>(&self.hash_builder, &key) as usize;
+            new_table[hash].push((key, value));
+        }
+
+        mem::replace(&mut self.table, new_table);
+    }
+}
+
+pub struct Iter<'a, K: 'a, V: 'a> {
+    map: &'a LearnedHashMap<K, V>,
+    bucket: usize,
+    at: usize,
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.table.get(self.bucket) {
+                Some(bucket) => {
+                    match bucket.get(self.at) {
+                        Some(&(ref k, ref v)) => {
+                            // move along self.at and self.bucket
+                            self.at += 1;
+                            break Some((k, v));
+                        }
+                        None => {
+                            self.bucket += 1;
+                            self.at = 0;
+                            continue;
+                        }
+                    }
+                }
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a LearnedHashMap<K, V> {
+    type Item = (&'a K, &'a V);
+    type IntoIter = Iter<'a, K, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            map: self,
+            bucket: 0,
+            at: 0,
+        }
+    }
+}
+
+pub struct IntoIter<K, V> {
+    map: LearnedHashMap<K, V>,
+    bucket: usize,
+}
+
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (K, V);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.table.get_mut(self.bucket) {
+                Some(bucket) => match bucket.pop() {
+                    Some(x) => break Some(x),
+                    None => {
+                        self.bucket += 1;
+                        continue;
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<K, V> IntoIterator for LearnedHashMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = IntoIter<K, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            map: self,
+            bucket: 0,
+        }
+    }
+}
+
+use std::iter::FromIterator;
+impl<K, V> FromIterator<(K, V)> for LearnedHashMap<K, V>
+where
+    K: Hash + Eq,
+{
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let mut map = LearnedHashMap::new();
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+        map
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::algorithm::map::{BuildLearnedHasher, LearnedHashMap};
+    use crate::algorithm::map::{LearnedHashMap, LearnedHasherBuilder};
     use geo_types::{Coordinate, Line, LineString, Point, Polygon};
     #[test]
     fn initialize_map_with_points() {
@@ -172,8 +321,10 @@ mod tests {
 
     #[test]
     fn map_with_hasher() {
-        let mut map: LearnedHashMap<u64, Point<f64>, BuildLearnedHasher> =
-            LearnedHashMap::<u64, Point<f64>, BuildLearnedHasher>::with_hasher(BuildLearnedHasher);
+        let mut map: LearnedHashMap<u64, Point<f64>, LearnedHasherBuilder> =
+            LearnedHashMap::<u64, Point<f64>, LearnedHasherBuilder>::with_hasher(
+                LearnedHasherBuilder::new(),
+            );
         let a: Point<f64> = (0., 1.).into();
         let b: Point<f64> = (1., 0.).into();
         let id_a: u64 = 1;

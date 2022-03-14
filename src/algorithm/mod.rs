@@ -12,16 +12,22 @@ pub mod linear;
 pub mod linkedlist;
 pub mod map;
 pub mod map2;
+pub mod map3;
 mod stats;
 pub mod third;
 // mod linear;
 
-use geo_types::Point;
 // use crate::utils::stats::*;
 // pub use linear::LinearModel;
 // pub use linear::LogLinearModel;
 // use log::*;
-//
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Point<T> {
+    id: usize,
+    value: (T, T),
+}
+
 pub trait Model {
     fn name(&self) -> String;
     fn predict(&self, x: f64) -> f64;
