@@ -2,38 +2,38 @@ use crate::algorithm::Point;
 use core::mem;
 use std::borrow::Borrow;
 
-/// Hasher
-pub struct LearnedHasher {
-    state: u64,
-    params: (f64, f64),
+//Model
+#[derive(Default)]
+pub struct Model {
+    param: (f64, f64),
 }
 
-impl Default for LearnedHasher {
-    /// Creates a new `LearnedHasher` using [`new`].
-    ///
-    /// [`new`]: LearnedHasher::new
-    fn default() -> LearnedHasher {
-        LearnedHasher::new()
+impl Model {
+    pub fn new() -> Self {
+        Self { param: (0.0, 0.0) }
     }
+
+    pub fn predict(&self, x: f64) -> u64 {
+        (x * self.param.0 + self.param.1).round() as u64
+    }
+}
+/// Hasher
+#[derive(Default)]
+pub struct LearnedHasher {
+    state: u64,
+    model: Model,
 }
 
 impl LearnedHasher {
-    pub fn new() -> LearnedHasher {
-        LearnedHasher {
+    pub fn new() -> Self {
+        Self {
             state: 0u64,
-            params: (0.0, 0.0),
-        }
-    }
-
-    pub fn with_params(params: (f64, f64)) -> LearnedHasher {
-        LearnedHasher {
-            state: 0u64,
-            params,
+            model: Model::new(),
         }
     }
 
     fn write(&mut self, x: f64) {
-        self.state = x.mul_add(self.params.0, self.params.1).round() as u64;
+        self.state = self.model.predict(x);
     }
 
     fn finish(&self) -> u64 {
@@ -55,8 +55,14 @@ pub struct LearnedHashMap {
     items: usize,
 }
 
+// impl Default for LearnedHashMap {
+//     fn default() -> LearnedHashMap {
+//         LearnedHashMap::new()
+//     }
+// }
+
 impl LearnedHashMap {
-    pub fn new() -> LearnedHashMap {
+    pub fn new() -> Self {
         Self {
             hasher: LearnedHasher::new(),
             table: Vec::new(),
@@ -148,8 +154,9 @@ impl LearnedHashMap {
 mod tests {
     use super::*;
     use crate::algorithm::Point;
+
     #[test]
-    fn initialize_map_with_points() {
+    fn insert() {
         let mut map: LearnedHashMap = LearnedHashMap::new();
         let a: Point<f64> = Point {
             id: 1,
@@ -164,5 +171,23 @@ mod tests {
         map.insert(b);
         assert_eq!(map.get(&(0., 1.)).unwrap(), &a);
         assert_eq!(map.get(&(1., 0.)).unwrap(), &b);
+    }
+
+    #[test]
+    fn insert_repeated() {
+        let mut map: LearnedHashMap = LearnedHashMap::new();
+        let a: Point<f64> = Point {
+            id: 1,
+            value: (0., 1.),
+        };
+
+        let b: Point<f64> = Point {
+            id: 2,
+            value: (0., 1.),
+        };
+        let res = map.insert(a);
+        assert_eq!(res, None);
+        let res = map.insert(b);
+        assert_eq!(res, None);
     }
 }
