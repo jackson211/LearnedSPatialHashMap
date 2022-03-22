@@ -1,3 +1,4 @@
+use num_traits::{cast::FromPrimitive, float::Float};
 use rayon::prelude::*;
 
 pub fn mean(values: &Vec<f64>) -> f64 {
@@ -39,25 +40,34 @@ pub fn covariance(x_values: &Vec<f64>, y_values: &Vec<f64>) -> f64 {
         / length as f64
 }
 
-pub fn mean_squared_error(actual: &Vec<f64>, predict: &Vec<f64>) -> f64 {
+pub fn mean_squared_error<F>(actual: &Vec<F>, predict: &Vec<F>) -> F
+where
+    F: Float + FromPrimitive,
+{
     if actual.len() != predict.len() {
         panic!("actual and predict must be of equal length.");
     }
+
     actual
         .iter()
         .zip(predict.iter())
-        .fold(0.0, |sum, (x, y)| sum + f64::powf(x - y, 2f64))
-        / actual.len() as f64
+        .fold(F::from_f64(0.0).unwrap(), |sum, (&x, &y)| {
+            sum + (x - y).powf(F::from_f64(2.0).unwrap())
+        })
+        / F::from_usize(actual.len()).unwrap()
 }
 
-pub fn root_mean_squared_error(actual: &Vec<f64>, predict: &Vec<f64>) -> f64 {
-    mean_squared_error(&actual, &predict).sqrt()
+pub fn root_mean_squared_error<F>(actual: &Vec<F>, predict: &Vec<F>) -> F
+where
+    F: Float + FromPrimitive,
+{
+    mean_squared_error::<F>(&actual, &predict).sqrt()
 }
 
 #[cfg(test)]
 mod tests {
     use crate::algorithm::stats::*;
-    use crate::algorithm::*;
+    // use crate::algorithm::*;
 
     #[test]
     fn mean_empty_vec() {

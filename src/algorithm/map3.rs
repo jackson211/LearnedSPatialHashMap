@@ -1,39 +1,47 @@
+use crate::algorithm::linear::LinearModel;
+use crate::algorithm::model::Model;
 use crate::algorithm::Point;
 use core::mem;
 use std::borrow::Borrow;
 
 //Model
-#[derive(Default)]
-pub struct Model {
-    param: (f64, f64),
-}
-
-impl Model {
-    pub fn new() -> Self {
-        Self { param: (0.0, 0.0) }
-    }
-
-    pub fn predict(&self, x: f64) -> u64 {
-        (x * self.param.0 + self.param.1).round() as u64
-    }
-}
+// #[derive(Default)]
+// pub struct Model {
+//     param: (f64, f64),
+// }
+//
+// impl Model {
+//     pub fn new() -> Self {
+//         Self { param: (0.0, 0.0) }
+//     }
+//
+//     pub fn predict(&self, x: f64) -> u64 {
+//         (x * self.param.0 + self.param.1).round() as u64
+//     }
+// }
 /// Hasher
 #[derive(Default)]
-pub struct LearnedHasher {
+pub struct LearnedHasher<M: Model> {
     state: u64,
-    model: Model,
+    model: M,
+    sort_by_lat: bool,
 }
 
-impl LearnedHasher {
-    pub fn new() -> Self {
-        Self {
+impl<M: Model> LearnedHasher<M> {
+    pub fn new(model: M) -> LearnedHasher<M> {
+        LearnedHasher {
             state: 0u64,
-            model: Model::new(),
+            model: model,
+            sort_by_lat: true,
         }
     }
 
-    fn write(&mut self, x: f64) {
-        self.state = self.model.predict(x);
+    fn write(&mut self, data: &(f64, f64)) {
+        if self.sort_by_lat {
+            self.state = self.model.predict(data.0).round() as u64;
+        } else {
+            self.state = self.model.predict(data.1).round() as u64;
+        }
     }
 
     fn finish(&self) -> u64 {
@@ -41,38 +49,31 @@ impl LearnedHasher {
     }
 }
 
-pub fn make_hash(hasher: &mut LearnedHasher, p: &(f64, f64)) -> u64 {
-    //TODO decide which number to be hashed
-    hasher.write(p.0);
+pub fn make_hash<M: Model>(hasher: &mut LearnedHasher<M>, p: &(f64, f64)) -> u64 {
+    hasher.write(p);
     hasher.finish()
 }
 
 const INITIAL_NBUCKETS: usize = 1;
 #[derive(Default)]
-pub struct LearnedHashMap {
-    hasher: LearnedHasher,
+pub struct LearnedHashMap<M: Model> {
+    hasher: LearnedHasher<M>,
     table: Vec<Vec<Point<f64>>>,
     items: usize,
 }
 
-// impl Default for LearnedHashMap {
-//     fn default() -> LearnedHashMap {
-//         LearnedHashMap::new()
-//     }
-// }
-
-impl LearnedHashMap {
-    pub fn new() -> Self {
-        Self {
-            hasher: LearnedHasher::new(),
+impl<M: Model> LearnedHashMap<M> {
+    pub fn new(model: M) -> LearnedHashMap<M> {
+        LearnedHashMap {
+            hasher: LearnedHasher::new(model),
             table: Vec::new(),
             items: 0,
         }
     }
 
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_capacity(model: M, capacity: usize) -> Self {
         Self {
-            hasher: LearnedHasher::new(),
+            hasher: LearnedHasher::new(model),
             table: Vec::with_capacity(capacity),
             items: 0,
         }
@@ -83,7 +84,7 @@ impl LearnedHashMap {
             self.resize();
         }
         let hash = make_hash(&mut self.hasher, &p.value) as usize;
-        println!("inserting with hash {:?}", hash);
+        dbg!("inserting with hash {:?}", hash);
 
         // Find the bucket at hash location
         let bucket = &mut self.table[hash];
@@ -157,7 +158,6 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut map: LearnedHashMap = LearnedHashMap::new();
         let a: Point<f64> = Point {
             id: 1,
             value: (0., 1.),
@@ -167,6 +167,8 @@ mod tests {
             id: 2,
             value: (1., 0.),
         };
+        let model = LinearModel::new();
+        let mut map: LearnedHashMap = LearnedHashMap::new();
         map.insert(a);
         map.insert(b);
         assert_eq!(map.get(&(0., 1.)).unwrap(), &a);
