@@ -1,28 +1,36 @@
-use core::hash::{BuildHasher, Hasher};
+use crate::algorithm::model::Model;
 
-pub struct LearnedHasher {
+use num_traits::{
+    cast::{AsPrimitive, FromPrimitive},
+    float::Float,
+};
+
+/// Hasher
+#[derive(Default)]
+pub struct LearnedHasher<M: Model> {
     state: u64,
+    model: M,
+    sort_by_lat: bool,
 }
 
-impl LearnedHasher {
-    pub fn new() -> LearnedHasher {
-        LearnedHasher { state: 0u64 }
+impl<M, F> LearnedHasher<M>
+where
+    F: Float + FromPrimitive + AsPrimitive<u64>,
+    M: Model<F = F>,
+{
+    pub fn new(model: M) -> LearnedHasher<M> {
+        LearnedHasher {
+            state: 0u64,
+            model,
+            sort_by_lat: true,
+        }
     }
-}
 
-impl Default for LearnedHasher {
-    /// Creates a new `LearnedHasher` using [`new`].
-    ///
-    /// [`new`]: LearnedHasher::new
-    fn default() -> LearnedHasher {
-        LearnedHasher::new()
-    }
-}
-
-impl Hasher for LearnedHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        for &byte in bytes {
-            self.state = self.state.rotate_left(8) ^ u64::from(byte);
+    fn write(&mut self, data: &(F, F)) {
+        if self.sort_by_lat {
+            self.state = self.model.predict(data.0).round().as_();
+        } else {
+            self.state = self.model.predict(data.1).round().as_();
         }
     }
 
@@ -31,43 +39,25 @@ impl Hasher for LearnedHasher {
     }
 }
 
-#[derive(Debug)]
-pub struct LearnedHasherBuilder {
-    param: (f64, f64),
-}
-
-impl LearnedHasherBuilder {
-    pub fn new() -> LearnedHasherBuilder {
-        LearnedHasherBuilder {
-            param: (0f64, 0f64),
-        }
-    }
-}
-
-impl Default for LearnedHasherBuilder {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl BuildHasher for LearnedHasherBuilder {
-    type Hasher = LearnedHasher;
-    #[inline]
-    fn build_hasher(&self) -> LearnedHasher {
-        LearnedHasher::new()
-    }
+pub fn make_hash<M, F>(hasher: &mut LearnedHasher<M>, p: &(F, F)) -> u64
+where
+    F: Float + FromPrimitive + AsPrimitive<u64>,
+    M: Model<F = F>,
+{
+    hasher.write(p);
+    hasher.finish()
 }
 
 #[cfg(test)]
 mod tests {
     use super::LearnedHasher;
-    use std::hash::Hasher;
+    use crate::algorithm::linear::LinearModel;
 
     #[test]
-    fn hasher() {
-        let mut hasher = LearnedHasher::new();
-        hasher.write(&10f64.to_ne_bytes());
-        assert_eq!(2440u64, hasher.finish());
+    fn hasher_with_empty_model() {
+        let model: LinearModel<f64> = LinearModel::new();
+        let mut hasher = LearnedHasher::new(model);
+        hasher.write(&(10f64, 10f64));
+        assert_eq!(0u64, hasher.finish());
     }
 }

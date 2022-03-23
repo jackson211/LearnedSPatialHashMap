@@ -128,12 +128,6 @@ where
     )
 }
 
-// fn linear_fn(x_values: &Vec<f64>, y_values: &Vec<f64>) -> (f64, f64) {
-//     let coefficient: f64 = covariance(x_values, y_values) / variance(x_values);
-//     let intercept: f64 = mean(y_values) - coefficient * mean(x_values);
-//     (coefficient, intercept)
-// }
-
 pub struct LinearModel<F: Float> {
     pub coefficient: F,
     pub intercept: F,
@@ -159,10 +153,11 @@ where
     }
 }
 
-impl<F> Model<F> for LinearModel<F>
+impl<F> Model for LinearModel<F>
 where
     F: Float + FromPrimitive,
 {
+    type F = F;
     fn name(&self) -> String {
         String::from("linear")
     }

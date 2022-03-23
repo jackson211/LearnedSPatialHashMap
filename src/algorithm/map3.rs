@@ -1,58 +1,6 @@
-use crate::algorithm::linear::LinearModel;
-use crate::algorithm::model::Model;
-use crate::algorithm::Point;
+use crate::algorithm::{hash::*, linear::LinearModel, model::Model, Point};
 use core::mem;
 use std::borrow::Borrow;
-
-//Model
-// #[derive(Default)]
-// pub struct Model {
-//     param: (f64, f64),
-// }
-//
-// impl Model {
-//     pub fn new() -> Self {
-//         Self { param: (0.0, 0.0) }
-//     }
-//
-//     pub fn predict(&self, x: f64) -> u64 {
-//         (x * self.param.0 + self.param.1).round() as u64
-//     }
-// }
-/// Hasher
-#[derive(Default)]
-pub struct LearnedHasher<M: Model> {
-    state: u64,
-    model: M,
-    sort_by_lat: bool,
-}
-
-impl<M: Model> LearnedHasher<M> {
-    pub fn new(model: M) -> LearnedHasher<M> {
-        LearnedHasher {
-            state: 0u64,
-            model: model,
-            sort_by_lat: true,
-        }
-    }
-
-    fn write(&mut self, data: &(f64, f64)) {
-        if self.sort_by_lat {
-            self.state = self.model.predict(data.0).round() as u64;
-        } else {
-            self.state = self.model.predict(data.1).round() as u64;
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        self.state
-    }
-}
-
-pub fn make_hash<M: Model>(hasher: &mut LearnedHasher<M>, p: &(f64, f64)) -> u64 {
-    hasher.write(p);
-    hasher.finish()
-}
 
 const INITIAL_NBUCKETS: usize = 1;
 #[derive(Default)]
