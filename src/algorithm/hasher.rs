@@ -9,8 +9,8 @@ use num_traits::{
 #[derive(Default)]
 pub struct LearnedHasher<M: Model> {
     state: u64,
-    model: M,
-    sort_by_lat: bool,
+    pub model: M,
+    pub sort_by_lat: bool,
 }
 
 impl<M, F> LearnedHasher<M>

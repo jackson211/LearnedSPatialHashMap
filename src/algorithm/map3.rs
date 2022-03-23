@@ -1,19 +1,31 @@
-use crate::algorithm::{hash::*, linear::LinearModel, model::Model, Point};
+use crate::algorithm::{hasher::*, model::Model, Point};
 use core::mem;
+use num_traits::{
+    cast::{AsPrimitive, FromPrimitive},
+    float::Float,
+};
 use std::borrow::Borrow;
 
 const INITIAL_NBUCKETS: usize = 1;
 #[derive(Default)]
-pub struct LearnedHashMap<M: Model> {
+pub struct LearnedHashMap<M, K>
+where
+    M: Model,
+    K: Float,
+{
     hasher: LearnedHasher<M>,
-    table: Vec<Vec<Point<f64>>>,
+    table: Vec<Vec<Point<K>>>,
     items: usize,
 }
 
-impl<M: Model> LearnedHashMap<M> {
-    pub fn new(model: M) -> LearnedHashMap<M> {
+impl<M, K> LearnedHashMap<M, K>
+where
+    K: Float + AsPrimitive<u64> + FromPrimitive,
+    M: Model<F = K>,
+{
+    pub fn new(model: M) -> LearnedHashMap<M, K> {
         LearnedHashMap {
-            hasher: LearnedHasher::new(model),
+            hasher: LearnedHasher::<M>::new(model),
             table: Vec::new(),
             items: 0,
         }
@@ -27,7 +39,8 @@ impl<M: Model> LearnedHashMap<M> {
         }
     }
 
-    pub fn insert(&mut self, p: Point<f64>) -> Option<Point<f64>> {
+    pub fn insert(&mut self, p: Point<K>) -> Option<Point<K>> {
+        // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
             self.resize();
         }
@@ -38,9 +51,9 @@ impl<M: Model> LearnedHashMap<M> {
         let bucket = &mut self.table[hash];
 
         // Find the key at second bucket
-        for &mut ref mut ep in bucket.iter_mut() {
-            if ep == &p {
-                return Some(mem::replace(ep, p));
+        for mut ep in bucket.iter_mut() {
+            if ep == &mut p.clone() {
+                return Some(mem::replace(&mut ep, p));
             }
         }
 
@@ -49,7 +62,19 @@ impl<M: Model> LearnedHashMap<M> {
         None
     }
 
-    pub fn get(&mut self, p: &(f64, f64)) -> Option<&Point<f64>> {
+    pub fn batch_insert(&mut self, ps: &[Point<K>]) {
+        for p in ps.iter() {
+            self.insert(*p);
+        }
+    }
+
+    pub fn fit_batch_insert(&mut self, ps: &[Point<K>]) {
+        let data: Vec<(K, K)> = ps.iter().map(|&p| (p.value.0, p.value.1)).collect();
+        self.hasher.model.fit_tuple(&data);
+        self.batch_insert(ps);
+    }
+
+    pub fn get(&mut self, p: &(K, K)) -> Option<&Point<K>> {
         let hash = make_hash(&mut self.hasher, p) as usize;
         // self.table.get(hash, equivalent_key(k))
 
@@ -59,11 +84,11 @@ impl<M: Model> LearnedHashMap<M> {
             .map(|i| i)
     }
 
-    pub fn contains_key(&mut self, key: &(f64, f64)) -> bool {
+    pub fn contains_key(&mut self, key: &(K, K)) -> bool {
         self.get(key).is_some()
     }
 
-    pub fn remove(&mut self, p: &(f64, f64)) -> Option<Point<f64>> {
+    pub fn remove(&mut self, p: &(K, K)) -> Option<Point<K>> {
         let hash = make_hash(&mut self.hasher, p) as usize;
         let bucket = &mut self.table[hash];
         let i = bucket.iter().position(|&ref ek| ek.value.borrow() == p)?;
@@ -102,7 +127,7 @@ impl<M: Model> LearnedHashMap<M> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithm::Point;
+    use crate::algorithm::{linear::LinearModel, Point};
 
     #[test]
     fn insert() {
@@ -115,8 +140,8 @@ mod tests {
             id: 2,
             value: (1., 0.),
         };
-        let model = LinearModel::new();
-        let mut map: LearnedHashMap = LearnedHashMap::new();
+        let model: LinearModel<f64> = LinearModel::new();
+        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new(model);
         map.insert(a);
         map.insert(b);
         assert_eq!(map.get(&(0., 1.)).unwrap(), &a);
@@ -125,7 +150,8 @@ mod tests {
 
     #[test]
     fn insert_repeated() {
-        let mut map: LearnedHashMap = LearnedHashMap::new();
+        let model: LinearModel<f64> = LinearModel::new();
+        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new(model);
         let a: Point<f64> = Point {
             id: 1,
             value: (0., 1.),
@@ -135,6 +161,7 @@ mod tests {
             id: 2,
             value: (0., 1.),
         };
+
         let res = map.insert(a);
         assert_eq!(res, None);
         let res = map.insert(b);

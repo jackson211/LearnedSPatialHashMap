@@ -1,5 +1,4 @@
 pub mod algorithm;
-pub mod types;
 
 pub struct Config {
     pub query: String,
