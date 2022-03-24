@@ -1,5 +1,5 @@
 use crate::algorithm::model::Model;
-use crate::algorithm::stats::*;
+use crate::algorithm::stats::root_mean_squared_error;
 
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, float::Float};
@@ -15,8 +15,6 @@ pub enum Error {
     Mean,
     /// Lengths of the inputs are different.
     InputLenDif,
-    /// Can't compute linear regression of zero elements
-    NoElements,
 }
 
 pub fn slr<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
@@ -185,48 +183,6 @@ where
     }
 }
 
-// fn log_linear_fn(x_values: &Vec<f64>, y_values: &Vec<f64>) -> (f64, f64) {
-//     let (x_log, y_log) = x_values
-//         .iter()
-//         .zip(y_values.iter())
-//         .map(|(x, y)| (*x, y.ln()))
-//         .filter(|(_, y)| y.is_finite())
-//         .unzip();
-//     linear_fn(&x_log, &y_log)
-// }
-
-// pub struct LogLinearModel {
-//     pub params: (f64, f64),
-// }
-
-// impl LogLinearModel {
-//     pub fn new(data: &ModelData) -> LogLinearModel {
-//         LogLinearModel {
-//             params: log_linear_fn(&data.get_all_x(), &data.get_all_y()),
-//         }
-//     }
-// }
-
-// impl Model for LogLinearModel {
-//     fn name(&self) -> String {
-//         String::from("loglinear")
-//     }
-//     fn predict(&self, x: f64) -> f64 {
-//         let (coefficient, intercept) = self.params;
-//         f64::exp(coefficient * x + intercept)
-//     }
-
-//     fn predict_list(&self, x_values: &Vec<f64>) -> Vec<f64> {
-//         (0..x_values.len())
-//             .map(|i| self.predict(x_values[i]))
-//             .collect()
-//     }
-//     fn evaluate(&self, x_test: &Vec<f64>, y_test: &Vec<f64>) -> f64 {
-//         let y_predicted = self.predict_list(x_test);
-//         return root_mean_squared_error(y_test, &y_predicted);
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,14 +250,4 @@ mod tests {
         let error = model.evaluate(&x_values, &y_values);
         assert_delta!(0.69282f64, error, 0.00001);
     }
-
-    // #[test]
-    // fn transform_log_test() {
-    //     let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
-    //     let y_values = vec![1f64, 3f64, 2f64, 4f64, 5f64];
-    //     let (w, b) = log_linear_fn(&x_values, &y_values);
-
-    //     assert_delta!(0.35065, w, 0.00001);
-    //     assert_delta!(-0.09446, b, 0.00001);
-    // }
 }
