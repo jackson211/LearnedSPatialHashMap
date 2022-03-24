@@ -7,7 +7,7 @@ use num_traits::{
 
 /// Hasher
 #[derive(Default)]
-pub struct LearnedHasher<M: Model> {
+pub struct LearnedHasher<M: Model + Default> {
     state: u64,
     pub model: M,
     pub sort_by_lat: bool,
@@ -16,12 +16,12 @@ pub struct LearnedHasher<M: Model> {
 impl<M, F> LearnedHasher<M>
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,
-    M: Model<F = F>,
+    M: Model<F = F> + Default,
 {
-    pub fn new(model: M) -> LearnedHasher<M> {
+    pub fn new() -> LearnedHasher<M> {
         LearnedHasher {
             state: 0u64,
-            model,
+            model: Default::default(),
             sort_by_lat: true,
         }
     }
@@ -42,7 +42,7 @@ where
 pub fn make_hash<M, F>(hasher: &mut LearnedHasher<M>, p: &(F, F)) -> u64
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,
-    M: Model<F = F>,
+    M: Model<F = F> + Default,
 {
     hasher.write(p);
     hasher.finish()
@@ -55,8 +55,7 @@ mod tests {
 
     #[test]
     fn hasher_with_empty_model() {
-        let model: LinearModel<f64> = LinearModel::new();
-        let mut hasher = LearnedHasher::new(model);
+        let mut hasher: LearnedHasher<LinearModel<f64>> = LearnedHasher::new();
         hasher.write(&(10f64, 10f64));
         assert_eq!(0u64, hasher.finish());
     }

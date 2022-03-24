@@ -126,6 +126,7 @@ where
     )
 }
 
+#[derive(Copy, Clone, Debug, Default)]
 pub struct LinearModel<F: Float> {
     pub coefficient: F,
     pub intercept: F,

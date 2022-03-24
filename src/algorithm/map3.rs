@@ -10,7 +10,7 @@ const INITIAL_NBUCKETS: usize = 1;
 #[derive(Default)]
 pub struct LearnedHashMap<M, K>
 where
-    M: Model,
+    M: Model + Default,
     K: Float,
 {
     hasher: LearnedHasher<M>,
@@ -21,19 +21,19 @@ where
 impl<M, K> LearnedHashMap<M, K>
 where
     K: Float + AsPrimitive<u64> + FromPrimitive,
-    M: Model<F = K>,
+    M: Model<F = K> + Default,
 {
-    pub fn new(model: M) -> LearnedHashMap<M, K> {
+    pub fn new() -> LearnedHashMap<M, K> {
         LearnedHashMap {
-            hasher: LearnedHasher::<M>::new(model),
+            hasher: LearnedHasher::<M>::new(),
             table: Vec::new(),
             items: 0,
         }
     }
 
-    pub fn with_capacity(model: M, capacity: usize) -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            hasher: LearnedHasher::new(model),
+            hasher: LearnedHasher::new(),
             table: Vec::with_capacity(capacity),
             items: 0,
         }
@@ -140,8 +140,8 @@ mod tests {
             id: 2,
             value: (1., 0.),
         };
-        let model: LinearModel<f64> = LinearModel::new();
-        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new(model);
+
+        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new();
         map.insert(a);
         map.insert(b);
         assert_eq!(map.get(&(0., 1.)).unwrap(), &a);
@@ -150,8 +150,7 @@ mod tests {
 
     #[test]
     fn insert_repeated() {
-        let model: LinearModel<f64> = LinearModel::new();
-        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new(model);
+        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new();
         let a: Point<f64> = Point {
             id: 1,
             value: (0., 1.),
