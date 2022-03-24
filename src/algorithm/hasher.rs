@@ -6,7 +6,7 @@ use num_traits::{
 };
 
 /// Hasher
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LearnedHasher<M: Model + Default> {
     state: u64,
     pub model: M,
@@ -32,6 +32,8 @@ where
         } else {
             self.state = self.model.predict(data.1).round().as_();
         }
+
+        dbg!(self.state);
     }
 
     fn finish(&self) -> u64 {

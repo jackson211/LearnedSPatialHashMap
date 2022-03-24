@@ -1,26 +1,13 @@
-use crate::algorithm::model::Model;
-use crate::algorithm::stats::root_mean_squared_error;
+use crate::algorithm::{error::Error, model::*, stats::root_mean_squared_error};
 
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, float::Float};
-
-/// The kinds of errors that can occur when calculating a linear regression.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Error {
-    /// The slope is too steep to represent, approaching infinity.
-    TooSteep,
-    /// Failed to calculate mean.
-    ///
-    /// This means the input was empty or had too many elements.
-    Mean,
-    /// Lengths of the inputs are different.
-    InputLenDif,
-}
+use std::fmt;
 
 pub fn slr<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
 where
     I: Iterator<Item = (F, F)>,
-    F: Float,
+    F: Float + fmt::Debug,
 {
     // compute the covariance of x and y as well as the variance of x
     let (sq_diff_sum, cov_diff_sum) = xys.fold((F::zero(), F::zero()), |(v, c), (x, y)| {
@@ -57,7 +44,7 @@ pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float + Sum,
+    F: Float + Sum + fmt::Debug,
 {
     if xs.len() != ys.len() {
         return Err(Error::InputLenDif);
@@ -101,7 +88,7 @@ pub fn linear_regression_tuple<X, Y, F>(xys: &[(X, Y)]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float,
+    F: Float + fmt::Debug,
 {
     if xys.is_empty() {
         return Err(Error::Mean);
@@ -146,7 +133,7 @@ where
 
 impl<F> Model for LinearModel<F>
 where
-    F: Float + FromPrimitive + Sum,
+    F: Float + FromPrimitive + Sum + fmt::Debug,
 {
     type F = F;
 
@@ -154,20 +141,19 @@ where
         String::from("linear")
     }
 
-    fn fit(&self, xs: &[F], ys: &[F]) -> LinearModel<F> {
+    fn fit(&mut self, xs: &[F], ys: &[F]) -> Result<(), Error> {
         let (coefficient, intercept): (F, F) = linear_regression(xs, ys).unwrap();
-        LinearModel {
-            coefficient: coefficient.into(),
-            intercept: intercept.into(),
-        }
+        self.coefficient = coefficient;
+        self.intercept = intercept;
+        Ok(())
     }
 
-    fn fit_tuple(&self, xys: &[(F, F)]) -> LinearModel<F> {
+    fn fit_tuple(&mut self, xys: &[(F, F)]) -> Result<(), Error> {
         let (coefficient, intercept): (F, F) = linear_regression_tuple(xys).unwrap();
-        LinearModel {
-            coefficient: coefficient.into(),
-            intercept: intercept.into(),
-        }
+        dbg!(coefficient, intercept);
+        self.coefficient = coefficient;
+        self.intercept = intercept;
+        Ok(())
     }
 
     fn predict(&self, x: F) -> F {
@@ -193,8 +179,8 @@ mod tests {
     fn should_panic_for_empty_vecs() {
         let x_values = vec![];
         let y_values = vec![];
-        let model: LinearModel<f64> = LinearModel::new();
-        model.fit(&x_values, &y_values);
+        let mut model: LinearModel<f64> = LinearModel::new();
+        model.fit(&x_values, &y_values).unwrap();
 
         assert_delta!(0.8f64, model.coefficient, 0.00001);
         assert_delta!(0.4, model.intercept, 0.00001);
@@ -204,8 +190,8 @@ mod tests {
     fn should_fit_coefficients_correctly() {
         let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
         let y_values = vec![1f64, 3f64, 2f64, 3f64, 5f64];
-        let model: LinearModel<f64> = LinearModel::new();
-        model.fit(&x_values, &y_values);
+        let mut model: LinearModel<f64> = LinearModel::new();
+        model.fit(&x_values, &y_values).unwrap();
 
         assert_delta!(0.8f64, model.coefficient, 0.00001);
         assert_delta!(0.4f64, model.intercept, 0.00001);
@@ -215,8 +201,8 @@ mod tests {
     fn should_predict_correctly() {
         let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
         let y_values = vec![1f64, 3f64, 2f64, 3f64, 5f64];
-        let model: LinearModel<f64> = LinearModel::new();
-        model.fit(&x_values, &y_values);
+        let mut model: LinearModel<f64> = LinearModel::new();
+        model.fit(&x_values, &y_values).unwrap();
 
         assert_delta!(1.2f64, model.predict(1f64), 0.00001);
         assert_delta!(2f64, model.predict(2f64), 0.00001);
@@ -229,8 +215,8 @@ mod tests {
     fn should_predict_list_correctly() {
         let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
         let y_values = vec![1f64, 3f64, 2f64, 3f64, 5f64];
-        let model: LinearModel<f64> = LinearModel::new();
-        model.fit(&x_values, &y_values);
+        let mut model: LinearModel<f64> = LinearModel::new();
+        model.fit(&x_values, &y_values).unwrap();
 
         let predictions = model.batch_predict(&x_values);
 
@@ -245,8 +231,8 @@ mod tests {
     fn should_evaluate_correctly() {
         let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
         let y_values = vec![1f64, 3f64, 2f64, 3f64, 5f64];
-        let model: LinearModel<f64> = LinearModel::new();
-        model.fit(&x_values.clone(), &y_values.clone());
+        let mut model: LinearModel<f64> = LinearModel::new();
+        model.fit(&x_values.clone(), &y_values.clone()).unwrap();
 
         let error = model.evaluate(&x_values, &y_values);
         assert_delta!(0.69282f64, error, 0.00001);

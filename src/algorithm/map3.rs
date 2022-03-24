@@ -5,9 +5,10 @@ use num_traits::{
     float::Float,
 };
 use std::borrow::Borrow;
+use std::fmt::Debug;
 
 const INITIAL_NBUCKETS: usize = 1;
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LearnedHashMap<M, K>
 where
     M: Model + Default,
@@ -20,12 +21,12 @@ where
 
 impl<M, K> LearnedHashMap<M, K>
 where
-    K: Float + AsPrimitive<u64> + FromPrimitive,
+    K: Float + AsPrimitive<u64> + FromPrimitive + Debug,
     M: Model<F = K> + Default,
 {
-    pub fn new() -> LearnedHashMap<M, K> {
-        LearnedHashMap {
-            hasher: LearnedHasher::<M>::new(),
+    pub fn new() -> Self {
+        Self {
+            hasher: LearnedHasher::new(),
             table: Vec::new(),
             items: 0,
         }
@@ -39,13 +40,21 @@ where
         }
     }
 
+    pub fn with_hasher(hasher: LearnedHasher<M>) -> Self {
+        Self {
+            hasher,
+            table: Vec::new(),
+            items: 0,
+        }
+    }
+
     pub fn insert(&mut self, p: Point<K>) -> Option<Point<K>> {
         // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
             self.resize();
         }
+        // Get index from the hasher
         let hash = make_hash(&mut self.hasher, &p.value) as usize;
-        dbg!("inserting with hash {:?}", hash);
 
         // Find the bucket at hash location
         let bucket = &mut self.table[hash];
@@ -63,14 +72,28 @@ where
     }
 
     pub fn batch_insert(&mut self, ps: &[Point<K>]) {
+        // Allocate table capacity before insert
+        let n = ps.len();
+        self.resize_with_capacity(n);
         for p in ps.iter() {
             self.insert(*p);
         }
     }
 
     pub fn fit_batch_insert(&mut self, ps: &[Point<K>]) {
-        let data: Vec<(K, K)> = ps.iter().map(|&p| (p.value.0, p.value.1)).collect();
-        self.hasher.model.fit_tuple(&data);
+        let data: Vec<(K, K)>;
+        if self.hasher.sort_by_lat {
+            data = ps
+                .iter()
+                .map(|&p| (p.value.0, K::from_usize(p.id).unwrap()))
+                .collect();
+        } else {
+            data = ps
+                .iter()
+                .map(|&p| (p.value.1, K::from_usize(p.id).unwrap()))
+                .collect();
+        }
+        self.hasher.model.fit_tuple(&data).unwrap();
         self.batch_insert(ps);
     }
 
@@ -109,7 +132,10 @@ where
             0 => INITIAL_NBUCKETS,
             n => 2 * n,
         };
+        self.resize_with_capacity(target_size);
+    }
 
+    fn resize_with_capacity(&mut self, target_size: usize) {
         let mut new_table = Vec::with_capacity(target_size);
         new_table.extend((0..target_size).map(|_| Vec::new()));
 
@@ -144,6 +170,8 @@ mod tests {
         let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new();
         map.insert(a);
         map.insert(b);
+
+        assert_eq!(map.items, 2);
         assert_eq!(map.get(&(0., 1.)).unwrap(), &a);
         assert_eq!(map.get(&(1., 0.)).unwrap(), &b);
     }
@@ -162,8 +190,42 @@ mod tests {
         };
 
         let res = map.insert(a);
+        assert_eq!(map.items, 1);
         assert_eq!(res, None);
+
         let res = map.insert(b);
+        assert_eq!(map.items, 2);
         assert_eq!(res, None);
+    }
+
+    #[test]
+    fn fit_batch_insert() {
+        let data: Vec<Point<f64>> = vec![
+            Point {
+                id: 1,
+                value: (1., 1.),
+            },
+            Point {
+                id: 2,
+                value: (3., 1.),
+            },
+            Point {
+                id: 3,
+                value: (2., 1.),
+            },
+            Point {
+                id: 4,
+                value: (3., 1.),
+            },
+            Point {
+                id: 5,
+                value: (5., 1.),
+            },
+        ];
+        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new();
+        map.fit_batch_insert(&data);
+
+        assert_delta!(0.90909f64, map.hasher.model.coefficient, 0.00001);
+        assert_delta!(0.45455f64, map.hasher.model.intercept, 0.00001);
     }
 }

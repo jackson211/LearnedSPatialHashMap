@@ -12,6 +12,7 @@ pub mod hasher;
 mod linear;
 // pub mod map;
 // pub mod map2;
+mod error;
 pub mod map3;
 mod model;
 mod stats;
