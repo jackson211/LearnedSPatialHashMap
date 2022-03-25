@@ -1,4 +1,5 @@
-use crate::algorithm::{hasher::*, model::Model, Point};
+use crate::algorithm::{hasher::*, model::Model};
+use crate::primitives::point::Point;
 use core::mem;
 use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
@@ -153,7 +154,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithm::{linear::LinearModel, Point};
+    use crate::algorithm::linear::LinearModel;
+    use crate::primitives::point::Point;
 
     #[test]
     fn insert() {
@@ -224,8 +226,30 @@ mod tests {
         ];
         let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new();
         map.fit_batch_insert(&data);
+        dbg!(&map);
 
         assert_delta!(0.90909f64, map.hasher.model.coefficient, 0.00001);
         assert_delta!(0.45455f64, map.hasher.model.intercept, 0.00001);
+        assert_eq!(
+            &Point {
+                id: 1,
+                value: (1., 1.),
+            },
+            map.get(&(1., 1.)).unwrap()
+        );
+        assert_eq!(
+            &Point {
+                id: 2,
+                value: (3., 1.),
+            },
+            map.get(&(3., 1.)).unwrap()
+        );
+        assert_eq!(
+            &Point {
+                id: 5,
+                value: (5., 1.),
+            },
+            map.get(&(5., 1.)).unwrap()
+        );
     }
 }
