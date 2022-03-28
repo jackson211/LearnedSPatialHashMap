@@ -32,8 +32,6 @@ where
         } else {
             self.state = self.model.predict(data.1).round().as_();
         }
-
-        dbg!(self.state);
     }
 
     fn finish(&self) -> u64 {

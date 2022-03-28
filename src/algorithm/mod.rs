@@ -9,8 +9,8 @@ macro_rules! assert_delta {
 
 extern crate num_traits;
 mod error;
-pub mod hasher;
-mod linear;
+mod hasher;
+pub mod linear;
 pub mod map3;
 mod model;
 mod stats;

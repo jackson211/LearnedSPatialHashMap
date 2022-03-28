@@ -56,18 +56,36 @@ where
         }
         // Get index from the hasher
         let hash = make_hash(&mut self.hasher, &p.value) as usize;
-
-        // Find the bucket at hash location
         let bucket = &mut self.table[hash];
 
-        // Find the key at second bucket
-        for mut ep in bucket.iter_mut() {
-            if ep == &mut p.clone() {
-                return Some(mem::replace(&mut ep, p));
+        // Find where to put the key at second bucket
+        let p_value = match self.hasher.sort_by_lat {
+            true => p.value.0,
+            false => p.value.1,
+        };
+
+        let mut insert_index = 0;
+        if self.hasher.sort_by_lat {
+            for mut ep in bucket.iter_mut() {
+                if ep == &mut p.clone() {
+                    return Some(mem::replace(&mut ep, p));
+                }
+                if ep.value.0 < p_value {
+                    insert_index += 1;
+                }
+            }
+        } else {
+            for mut ep in bucket.iter_mut() {
+                if ep == &mut p.clone() {
+                    return Some(mem::replace(&mut ep, p));
+                }
+                if ep.value.1 < p_value {
+                    insert_index += 1;
+                }
             }
         }
 
-        bucket.push(p);
+        bucket.insert(insert_index, p);
         self.items += 1;
         None
     }
@@ -217,7 +235,7 @@ mod tests {
             },
             Point {
                 id: 4,
-                value: (3., 1.),
+                value: (3., 2.),
             },
             Point {
                 id: 5,

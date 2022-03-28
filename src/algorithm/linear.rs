@@ -150,7 +150,6 @@ where
 
     fn fit_tuple(&mut self, xys: &[(F, F)]) -> Result<(), Error> {
         let (coefficient, intercept): (F, F) = linear_regression_tuple(xys).unwrap();
-        dbg!(coefficient, intercept);
         self.coefficient = coefficient;
         self.intercept = intercept;
         Ok(())
