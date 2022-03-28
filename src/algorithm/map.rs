@@ -49,6 +49,7 @@ where
         }
     }
 
+    #[inline]
     pub fn insert(&mut self, p: Point<K>) -> Option<Point<K>> {
         // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
@@ -66,18 +67,18 @@ where
 
         let mut insert_index = 0;
         if self.hasher.sort_by_lat {
-            for mut ep in bucket.iter_mut() {
+            for ep in bucket.iter_mut() {
                 if ep == &mut p.clone() {
-                    return Some(mem::replace(&mut ep, p));
+                    return Some(mem::replace(ep, p));
                 }
                 if ep.value.0 < p_value {
                     insert_index += 1;
                 }
             }
         } else {
-            for mut ep in bucket.iter_mut() {
+            for ep in bucket.iter_mut() {
                 if ep == &mut p.clone() {
-                    return Some(mem::replace(&mut ep, p));
+                    return Some(mem::replace(ep, p));
                 }
                 if ep.value.1 < p_value {
                     insert_index += 1;
@@ -100,18 +101,15 @@ where
     }
 
     pub fn fit_batch_insert(&mut self, ps: &[Point<K>]) {
-        let data: Vec<(K, K)>;
-        if self.hasher.sort_by_lat {
-            data = ps
-                .iter()
+        let data: Vec<(K, K)> = if self.hasher.sort_by_lat {
+            ps.iter()
                 .map(|&p| (p.value.0, K::from_usize(p.id).unwrap()))
-                .collect();
+                .collect()
         } else {
-            data = ps
-                .iter()
+            ps.iter()
                 .map(|&p| (p.value.1, K::from_usize(p.id).unwrap()))
-                .collect();
-        }
+                .collect()
+        };
         self.hasher.model.fit_tuple(&data).unwrap();
         self.batch_insert(ps);
     }
@@ -123,28 +121,29 @@ where
             return None;
         }
 
-        self.table[hash]
-            .iter()
-            .find(|&ep| ep.value.borrow() == p)
-            .map(|i| i)
+        self.table[hash].iter().find(|&ep| ep.value.borrow() == p)
     }
 
+    #[inline]
     pub fn contains_key(&mut self, key: &(K, K)) -> bool {
         self.get(key).is_some()
     }
 
+    #[inline]
     pub fn remove(&mut self, p: &(K, K)) -> Option<Point<K>> {
         let hash = make_hash(&mut self.hasher, p) as usize;
         let bucket = &mut self.table[hash];
-        let i = bucket.iter().position(|&ref ek| ek.value.borrow() == p)?;
+        let i = bucket.iter().position(|ek| ek.value.borrow() == p)?;
         self.items -= 1;
         Some(bucket.swap_remove(i))
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.items
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.items == 0
     }

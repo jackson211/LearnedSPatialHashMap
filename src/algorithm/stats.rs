@@ -1,26 +1,26 @@
 use num_traits::{cast::FromPrimitive, float::Float};
 use rayon::prelude::*;
 
-pub fn mean(values: &Vec<f64>) -> f64 {
-    if values.len() == 0 {
+pub fn mean(values: &[f64]) -> f64 {
+    if values.is_empty() {
         return 0f64;
     }
     values.par_iter().sum::<f64>() / values.len() as f64
 }
 
-pub fn variance(values: &Vec<f64>) -> f64 {
-    if values.len() == 0 {
+pub fn variance(values: &[f64]) -> f64 {
+    if values.is_empty() {
         return 0f64;
     }
     let mean = mean(values);
     values
         .par_iter()
-        .map(|x| f64::powf(x - mean, 2 as f64))
+        .map(|x| f64::powf(x - mean, 2f64))
         .sum::<f64>()
         / values.len() as f64
 }
 
-pub fn covariance(x_values: &Vec<f64>, y_values: &Vec<f64>) -> f64 {
+pub fn covariance(x_values: &[f64], y_values: &[f64]) -> f64 {
     if x_values.len() != y_values.len() {
         panic!("x_values and y_values must be of equal length.");
     }
@@ -40,7 +40,7 @@ pub fn covariance(x_values: &Vec<f64>, y_values: &Vec<f64>) -> f64 {
         / length as f64
 }
 
-pub fn mean_squared_error<F>(actual: &Vec<F>, predict: &Vec<F>) -> F
+pub fn mean_squared_error<F>(actual: &[F], predict: &[F]) -> F
 where
     F: Float + FromPrimitive,
 {
@@ -57,11 +57,11 @@ where
         / F::from_usize(actual.len()).unwrap()
 }
 
-pub fn root_mean_squared_error<F>(actual: &Vec<F>, predict: &Vec<F>) -> F
+pub fn root_mean_squared_error<F>(actual: &[F], predict: &[F]) -> F
 where
     F: Float + FromPrimitive,
 {
-    mean_squared_error::<F>(&actual, &predict).sqrt()
+    mean_squared_error::<F>(actual, predict).sqrt()
 }
 
 #[cfg(test)]

@@ -11,7 +11,6 @@ pub struct LearnedHasher<M: Model + Default> {
     state: u64,
     pub model: M,
     pub sort_by_lat: bool,
-    min: u64,
 }
 
 impl<M, F> LearnedHasher<M>
@@ -24,7 +23,6 @@ where
             state: 0u64,
             model: Default::default(),
             sort_by_lat: true,
-            min: 0u64,
         }
     }
 

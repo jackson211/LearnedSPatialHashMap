@@ -67,7 +67,7 @@ where
         .zip(ys.iter())
         .map(|(x, y)| (x.clone().into(), y.clone().into()));
 
-    slr(data.into_iter(), x_mean, y_mean)
+    slr(data, x_mean, y_mean)
 }
 
 /// Two-pass linear regression from tuples.
@@ -133,7 +133,7 @@ where
 
 impl<F> Model for LinearModel<F>
 where
-    F: Float + FromPrimitive + Sum + fmt::Debug,
+    F: Float + FromPrimitive + Sum + fmt::Debug + Sized,
 {
     type F = F;
 
@@ -158,14 +158,13 @@ where
     fn predict(&self, x: F) -> F {
         x * self.coefficient + self.intercept
     }
-
-    fn batch_predict(&self, xs: &Vec<F>) -> Vec<F> {
+    fn batch_predict(&self, xs: &[F]) -> Vec<F> {
         (0..xs.len()).map(|i| self.predict(xs[i])).collect()
     }
 
-    fn evaluate(&self, x_test: &Vec<F>, y_test: &Vec<F>) -> F {
+    fn evaluate(&self, x_test: &[F], y_test: &[F]) -> F {
         let y_predicted = self.batch_predict(x_test);
-        return root_mean_squared_error(y_test, &y_predicted);
+        root_mean_squared_error(y_test, &y_predicted)
     }
 }
 

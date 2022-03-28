@@ -25,5 +25,5 @@ pub fn read_config(config: Config) -> Option<String> {
     println!("Query Type: {}", config.query);
     println!("Filename: {}", config.filename);
 
-    Some(config.filename.clone())
+    Some(config.filename)
 }

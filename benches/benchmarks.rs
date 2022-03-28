@@ -16,15 +16,6 @@ use criterion::Criterion;
 const SEED_1: &[u8; 32] = b"Gv0aHMtHkBGsUXNspGU9fLRuCWkZWHZx";
 const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
 
-struct Params;
-
-// impl RTreeParams for Params {
-//     const MIN_SIZE: usize = 2;
-//     const MAX_SIZE: usize = 40;
-//     const REINSERTION_COUNT: usize = 1;
-//     type DefaultInsertionStrategy = RStarInsertionStrategy;
-// }
-
 const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
 
 fn bulk_load_baseline(c: &mut Criterion) {
