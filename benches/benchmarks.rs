@@ -8,7 +8,7 @@ extern crate rand_hc;
 use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 
-use lsph::algorithm::{linear::LinearModel, map3::LearnedHashMap};
+use lsph::algorithm::{linear::LinearModel, map::LearnedHashMap};
 use lsph::primitives::point::Point;
 
 use criterion::Criterion;
@@ -29,7 +29,7 @@ const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
 
 fn bulk_load_baseline(c: &mut Criterion) {
     c.bench_function("Bulk load baseline", move |b| {
-        let points: Vec<_> = create_random_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
+        let points: Vec<_> = create_random_point_type_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
 
         b.iter(|| {
@@ -80,35 +80,48 @@ fn bulk_load_baseline(c: &mut Criterion) {
 //     });
 // }
 //
-// fn locate_successful(c: &mut Criterion) {
-//     let points: Vec<_> = create_random_points(100_000, SEED_1);
-//     let query_point = points[500];
-//     let tree = RTree::<_, Params>::bulk_load_with_params(points);
-//     c.bench_function("locate_at_point (successful)", move |b| {
-//         b.iter(|| tree.locate_at_point(&query_point).is_some())
-//     });
-// }
+fn locate_successful(c: &mut Criterion) {
+    let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
+    let query_point = create_random_points(100_000, SEED_1)[500];
+
+    let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+    map.fit_batch_insert(&points);
+    c.bench_function("locate_at_point (successful)", move |b| {
+        b.iter(|| map.get(&query_point).is_some())
+    });
+}
 //
-// fn locate_unsuccessful(c: &mut Criterion) {
-//     let points: Vec<_> = create_random_points(100_000, SEED_1);
-//     let tree = RTree::<_, Params>::bulk_load_with_params(points);
-//     let query_point = [0.7, 0.7];
-//     c.bench_function("locate_at_point (unsuccessful)", move |b| {
-//         b.iter(|| tree.locate_at_point(&query_point).is_none())
-//     });
-// }
+fn locate_unsuccessful(c: &mut Criterion) {
+    let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
+
+    let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+    map.fit_batch_insert(&points);
+    let query_point = (0.7, 0.7);
+    c.bench_function("locate_at_point (unsuccessful)", move |b| {
+        b.iter(|| map.get(&query_point).is_none())
+    });
+}
 
 criterion_group!(
     benches,
     bulk_load_baseline,
     // bulk_load_comparison,
     // tree_creation_quality,
-    // locate_successful,
-    // locate_unsuccessful
+    locate_successful,
+    locate_unsuccessful
 );
 criterion_main!(benches);
 
-fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<Point<f64>> {
+fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<(f64, f64)> {
+    let mut result = Vec::with_capacity(num_points);
+    let mut rng = Hc128Rng::from_seed(*seed);
+    for _ in 0..num_points {
+        result.push((rng.gen(), rng.gen()));
+    }
+    result
+}
+
+fn create_random_point_type_points(num_points: usize, seed: &[u8; 32]) -> Vec<Point<f64>> {
     let mut result: Vec<(f64, f64)> = Vec::with_capacity(num_points);
     let mut rng = Hc128Rng::from_seed(*seed);
     for _ in 0..num_points {

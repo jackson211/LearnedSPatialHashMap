@@ -11,6 +11,6 @@ extern crate num_traits;
 mod error;
 mod hasher;
 pub mod linear;
-pub mod map3;
+pub mod map;
 mod model;
 mod stats;
