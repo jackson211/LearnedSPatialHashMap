@@ -7,10 +7,9 @@ edition = "2021"
 
 [dependencies]
 num-traits = "0.2.2"
-geo-types = "0.7.2"
 geohash = { path = "geohash" }
-hashbrown = { version = "0.11.2", features = ["raw"] }
 rayon = "1.5.1"
+smallvec = "1.8.0"
 
 
 [dev-dependencies]
@@ -21,3 +20,6 @@ criterion = { version = "0.3.5", features = ["html_reports"] }
 [[bench]]
 name = "benchmarks"
 harness = false
+
+[profile.bench]
+debug = true

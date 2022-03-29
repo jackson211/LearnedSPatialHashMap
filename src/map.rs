@@ -1,5 +1,4 @@
-use crate::algorithm::{hasher::*, model::Model};
-use crate::primitives::point::Point;
+use crate::{algorithm::model::Model, hasher::*, primitives::point::Point};
 use core::mem;
 use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
@@ -8,7 +7,10 @@ use num_traits::{
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
+use smallvec::SmallVec;
+
 const INITIAL_NBUCKETS: usize = 1;
+
 #[derive(Default, Debug)]
 pub struct LearnedHashMap<M, K>
 where
@@ -16,7 +18,7 @@ where
     K: Float,
 {
     hasher: LearnedHasher<M>,
-    table: Vec<Vec<Point<K>>>,
+    table: Vec<SmallVec<[Point<K>; 4]>>,
     items: usize,
 }
 
@@ -49,24 +51,27 @@ where
         }
     }
 
-    #[inline]
     pub fn insert(&mut self, p: Point<K>) -> Option<Point<K>> {
         // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
             self.resize();
         }
-        // Get index from the hasher
-        let hash = make_hash(&mut self.hasher, &p.value) as usize;
-        let bucket = &mut self.table[hash];
 
         // Find where to put the key at second bucket
-        let p_value = match self.hasher.sort_by_lat {
+        let p_value = match self.hasher.sort_by_x {
             true => p.value.0,
             false => p.value.1,
         };
 
+        self.insert_with_axis(p_value, p)
+    }
+
+    fn insert_with_axis(&mut self, p_value: K, p: Point<K>) -> Option<Point<K>> {
+        // Get index from the hasher
+        let hash = make_hash(&mut self.hasher, &p.value) as usize;
+        let bucket = &mut self.table[hash];
         let mut insert_index = 0;
-        if self.hasher.sort_by_lat {
+        if self.hasher.sort_by_x {
             for ep in bucket.iter_mut() {
                 if ep == &mut p.clone() {
                     return Some(mem::replace(ep, p));
@@ -91,17 +96,8 @@ where
         None
     }
 
-    pub fn batch_insert(&mut self, ps: &[Point<K>]) {
-        // Allocate table capacity before insert
-        let n = ps.len();
-        self.resize_with_capacity(n);
-        for p in ps.iter() {
-            self.insert(*p);
-        }
-    }
-
     pub fn fit_batch_insert(&mut self, ps: &[Point<K>]) {
-        let data: Vec<(K, K)> = if self.hasher.sort_by_lat {
+        let data: Vec<(K, K)> = if self.hasher.sort_by_x {
             ps.iter()
                 .map(|&p| (p.value.0, K::from_usize(p.id).unwrap()))
                 .collect()
@@ -114,22 +110,32 @@ where
         self.batch_insert(ps);
     }
 
+    fn batch_insert(&mut self, ps: &[Point<K>]) {
+        // Allocate table capacity before insert
+        let n = ps.len();
+        self.resize_with_capacity(n);
+        for p in ps.iter() {
+            self.insert(*p);
+        }
+    }
+
     pub fn get(&mut self, p: &(K, K)) -> Option<&Point<K>> {
         let hash = make_hash(&mut self.hasher, p) as usize;
 
         if hash > self.table.capacity() {
             return None;
         }
+        self.find_by_hash(hash, p)
+    }
 
+    pub fn find_by_hash(&mut self, hash: usize, p: &(K, K)) -> Option<&Point<K>> {
         self.table[hash].iter().find(|&ep| ep.value.borrow() == p)
     }
 
-    #[inline]
     pub fn contains_key(&mut self, key: &(K, K)) -> bool {
         self.get(key).is_some()
     }
 
-    #[inline]
     pub fn remove(&mut self, p: &(K, K)) -> Option<Point<K>> {
         let hash = make_hash(&mut self.hasher, p) as usize;
         let bucket = &mut self.table[hash];
@@ -138,12 +144,42 @@ where
         Some(bucket.swap_remove(i))
     }
 
-    #[inline]
+    pub fn range_search(
+        &mut self,
+        bottom_left: &(K, K),
+        top_right: &(K, K),
+    ) -> Option<Vec<Point<K>>> {
+        let right_hash = make_hash(&mut self.hasher, top_right) as usize;
+        if right_hash > self.table.capacity() {
+            return None;
+        }
+        let left_hash = make_hash(&mut self.hasher, bottom_left) as usize;
+        if left_hash > self.table.capacity() || left_hash > right_hash {
+            return None;
+        }
+        let mut found: Vec<Point<K>> = Vec::new();
+        for i in left_hash..=right_hash {
+            let bucket = &self.table[i];
+            for item in bucket.iter() {
+                if item.value.0 >= bottom_left.0
+                    && item.value.1 >= bottom_left.1
+                    && item.value.0 <= top_right.0
+                    && item.value.1 <= top_right.1
+                {
+                    found.push(item.clone());
+                }
+            }
+        }
+        if found.is_empty() {
+            return None;
+        }
+        Some(found)
+    }
+
     pub fn len(&self) -> usize {
         self.items
     }
 
-    #[inline]
     pub fn is_empty(&self) -> bool {
         self.items == 0
     }
@@ -158,11 +194,9 @@ where
 
     fn resize_with_capacity(&mut self, target_size: usize) {
         let mut new_table = Vec::with_capacity(target_size);
-        new_table.extend((0..target_size).map(|_| Vec::new()));
+        new_table.extend((0..target_size).map(|_| SmallVec::new()));
 
         for p in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
-            //let mut hasher = DefaultHasher::new();
-            //key.hash(&mut hasher);
             let hash = make_hash(&mut self.hasher, &p.value) as usize;
             new_table[hash].push(p);
         }
@@ -276,5 +310,59 @@ mod tests {
         assert_eq!(None, map.get(&(2., 2.)));
         assert_eq!(None, map.get(&(50., 10.)));
         assert_eq!(None, map.get(&(500., 100.)));
+    }
+
+    #[test]
+    fn range_search() {
+        let data: Vec<Point<f64>> = vec![
+            Point {
+                id: 1,
+                value: (1., 1.),
+            },
+            Point {
+                id: 2,
+                value: (2., 2.),
+            },
+            Point {
+                id: 3,
+                value: (3., 3.),
+            },
+            Point {
+                id: 4,
+                value: (4., 4.),
+            },
+            Point {
+                id: 5,
+                value: (5., 5.),
+            },
+        ];
+        let mut map: LearnedHashMap<LinearModel<f64>, f64> = LearnedHashMap::new();
+        map.fit_batch_insert(&data);
+        // dbg!(&map);
+
+        let found: Vec<Point<f64>> = vec![
+            Point {
+                id: 1,
+                value: (1., 1.),
+            },
+            Point {
+                id: 2,
+                value: (2., 2.),
+            },
+            Point {
+                id: 3,
+                value: (3., 3.),
+            },
+        ];
+
+        assert_eq!(Some(found), map.range_search(&(1., 1.), &(3.5, 3.)));
+
+        let found: Vec<Point<f64>> = vec![Point {
+            id: 1,
+            value: (1., 1.),
+        }];
+
+        assert_eq!(Some(found), map.range_search(&(1., 1.), &(3., 1.)));
+        assert_eq!(None, map.range_search(&(4., 2.), &(5., 3.)));
     }
 }

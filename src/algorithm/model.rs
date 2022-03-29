@@ -1,4 +1,4 @@
-use crate::algorithm::error::Error;
+use crate::error::Error;
 
 pub trait Model {
     type F;

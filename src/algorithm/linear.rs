@@ -1,13 +1,16 @@
-use crate::algorithm::{error::Error, model::*, stats::root_mean_squared_error};
+use crate::{
+    algorithm::{model::*, stats::root_mean_squared_error},
+    error::Error,
+};
 
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, float::Float};
-use std::fmt;
+use std::fmt::Debug;
 
 pub fn slr<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
 where
     I: Iterator<Item = (F, F)>,
-    F: Float + fmt::Debug,
+    F: Float + Debug,
 {
     // compute the covariance of x and y as well as the variance of x
     let (sq_diff_sum, cov_diff_sum) = xys.fold((F::zero(), F::zero()), |(v, c), (x, y)| {
@@ -44,7 +47,7 @@ pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float + Sum + fmt::Debug,
+    F: Float + Sum + Debug,
 {
     if xs.len() != ys.len() {
         return Err(Error::InputLenDif);
@@ -88,7 +91,7 @@ pub fn linear_regression_tuple<X, Y, F>(xys: &[(X, Y)]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float + fmt::Debug,
+    F: Float + Debug,
 {
     if xys.is_empty() {
         return Err(Error::Mean);
@@ -133,7 +136,7 @@ where
 
 impl<F> Model for LinearModel<F>
 where
-    F: Float + FromPrimitive + Sum + fmt::Debug + Sized,
+    F: Float + FromPrimitive + Sum + Debug + Sized,
 {
     type F = F;
 

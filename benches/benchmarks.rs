@@ -8,19 +8,18 @@ extern crate rand_hc;
 use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 
-use lsph::algorithm::{linear::LinearModel, map::LearnedHashMap};
-use lsph::primitives::point::Point;
+use lsph::{algorithm::linear::LinearModel, map::LearnedHashMap, primitives::point::Point};
 
 use criterion::Criterion;
 
 const SEED_1: &[u8; 32] = b"Gv0aHMtHkBGsUXNspGU9fLRuCWkZWHZx";
-const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
+// const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
 
-const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
+const DEFAULT_BENCHMARK_SIZE: usize = 2000;
 
 fn bulk_load_baseline(c: &mut Criterion) {
     c.bench_function("Bulk load baseline", move |b| {
-        let points: Vec<_> = create_random_point_type_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
+        let points: Vec<_> = create_random_point_type_points(DEFAULT_BENCHMARK_SIZE, SEED_1);
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
 
         b.iter(|| {
@@ -33,7 +32,7 @@ fn bulk_load_baseline(c: &mut Criterion) {
 //     let mut group = c.benchmark_group("lsph and spade benchmarks");
 //
 //     group.bench_function("lsph sequential", |b| {
-//         let points: Vec<_> = create_random_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
+//         let points: Vec<_> = create_random_points(DEFAULT_BENCHMARK_SIZE, SEED_1);
 //         b.iter(move || {
 //             let mut rtree = lsph::RTree::new();
 //             for point in &points {
@@ -81,7 +80,7 @@ fn locate_successful(c: &mut Criterion) {
         b.iter(|| map.get(&query_point).is_some())
     });
 }
-//
+
 fn locate_unsuccessful(c: &mut Criterion) {
     let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
 
@@ -113,13 +112,7 @@ fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<(f64, f64)> {
 }
 
 fn create_random_point_type_points(num_points: usize, seed: &[u8; 32]) -> Vec<Point<f64>> {
-    let mut result: Vec<(f64, f64)> = Vec::with_capacity(num_points);
-    let mut rng = Hc128Rng::from_seed(*seed);
-    for _ in 0..num_points {
-        let x = rng.gen();
-        let y = rng.gen();
-        result.push((x, y));
-    }
+    let mut result = create_random_points(num_points, seed);
     result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
     result

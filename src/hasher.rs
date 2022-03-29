@@ -10,7 +10,7 @@ use num_traits::{
 pub struct LearnedHasher<M: Model + Default> {
     state: u64,
     pub model: M,
-    pub sort_by_lat: bool,
+    pub sort_by_x: bool,
 }
 
 impl<M, F> LearnedHasher<M>
@@ -22,15 +22,15 @@ where
         LearnedHasher {
             state: 0u64,
             model: Default::default(),
-            sort_by_lat: true,
+            sort_by_x: true,
         }
     }
 
     fn write(&mut self, data: &(F, F)) {
-        if self.sort_by_lat {
-            self.state = self.model.predict(data.0).round().as_();
+        if self.sort_by_x {
+            self.state = self.model.predict(data.0).floor().as_();
         } else {
-            self.state = self.model.predict(data.1).round().as_();
+            self.state = self.model.predict(data.1).floor().as_();
         }
     }
 
