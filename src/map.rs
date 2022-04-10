@@ -15,12 +15,11 @@ type PItem = Point<PType>;
 /// Default Bucket array for HashMap
 type Bucket = SmallVec<[PItem; 4]>;
 
-/// Default Model for HashMap
-// type DefaultModel = LinearModel;
-
-/// Default HashBuilder for HashMap
-// type DefaultHashBuilder<M: Model> = LearnedHashbuilder<M>;
-
+/// LearnedHashMap takes a model instead of an hasher for hashing indexes in the table
+///
+/// Default Model for the LearndedHashMap is Linear regression
+/// In order to build a ordered HashMap, we need to make sure that the model is monotonic
+///
 #[derive(Default, Debug)]
 pub struct LearnedHashMap<M: Model> {
     pub model: M,
@@ -28,18 +27,6 @@ pub struct LearnedHashMap<M: Model> {
     items: usize,
     sort_by_x: bool,
 }
-
-// impl<M> Default for LearnedHashMap<M> {
-//     fn default() -> Self {
-//         Self {
-//             model: DefaultModel::new(),
-//             table: Vec::new(),
-//             items: 0,
-//             sort_by_x: true,
-//         }
-//     }
-// }
-//
 
 #[inline]
 pub(crate) fn make_hash<M: Model>(model: &M, val: PType) -> usize {
@@ -215,7 +202,7 @@ where
                     && item.x <= top_right.0
                     && item.y <= top_right.1
                 {
-                    found.push(item.clone());
+                    found.push(*item);
                 }
             }
         }

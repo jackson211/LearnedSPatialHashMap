@@ -62,10 +62,7 @@ where
     let y_sum: f32 = ys.iter().cloned().sum();
     let y_mean = y_sum / n;
 
-    let data = xs
-        .iter()
-        .zip(ys.iter())
-        .map(|(x, y)| (x.clone().into(), y.clone().into()));
+    let data = xs.iter().zip(ys.iter()).map(|(x, y)| (*x, *y));
 
     slr(data, x_mean, y_mean)
 }
@@ -98,12 +95,7 @@ pub fn linear_regression_tuple(xys: &[(f32, f32)]) -> Result<(f32, f32), Error> 
     let x_mean = x_sum / n;
     let y_mean = y_sum / n;
 
-    slr(
-        xys.iter()
-            .map(|(x, y)| (x.clone().into(), y.clone().into())),
-        x_mean,
-        y_mean,
-    )
+    slr(xys.iter().map(|(x, y)| (*x, *y)), x_mean, y_mean)
 }
 
 #[derive(Copy, Clone, Debug, Default)]
