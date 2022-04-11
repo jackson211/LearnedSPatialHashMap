@@ -1,73 +1,59 @@
 use crate::{algorithm::Model, hasher::*, primitives::Point};
-use core::hash::{BuildHasher, Hash};
 use core::mem;
-use num_traits::cast::FromPrimitive;
+use num_traits::{
+    cast::{AsPrimitive, FromPrimitive},
+    float::Float,
+};
 use smallvec::SmallVec;
 use std::fmt::Debug;
 
 const INITIAL_NBUCKETS: usize = 1;
 
-/// Default Point type for HashMap
-type PType = f32;
-
 /// Default Point Item for HashMap
-type PItem = Point<PType>;
+type PItem<T> = Point<T>;
 
 /// Default Bucket array for HashMap
-type Bucket = SmallVec<[PItem; 4]>;
-
-/// Default HashBuilder uses hasher that uses linear regression
-pub type DefaultHashBuilder<M> = LearnedHashbuilder<M>;
+type Bucket<T> = SmallVec<[PItem<T>; 4]>;
 
 /// LearnedHashMap takes a model instead of an hasher for hashing indexes in the table
 ///
 /// Default Model for the LearndedHashMap is Linear regression
 /// In order to build a ordered HashMap, we need to make sure that the model is monotonic
 ///
+
 #[derive(Default, Debug)]
-pub struct LearnedHashMap<M: Model> {
-    hasher: DefaultHashBuilder<M>,
-    table: Vec<Bucket>,
+pub struct LearnedHashMap<M, F>
+where
+    F: Float,
+    M: Model<F = F> + Default,
+{
+    hasher: LearnedHasher<M, F>,
+    table: Vec<Bucket<F>>,
     items: usize,
     sort_by_x: bool,
 }
 
-#[inline]
-pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
-where
-    Q: Hash + ?Sized,
-    S: BuildHasher,
-{
-    use core::hash::Hasher;
-    let mut state = hash_builder.build_hasher();
-    val.hash(&mut state);
-    state.finish()
-}
-
 // #[inline]
-// pub(crate) fn make_hash<M: Model>(model: &M, val: PType) -> usize {
-//     model.predict(val).as_()
+// pub(crate) fn make_hash_point<S, F>(hasher: &LearnedHasher<M, F>, val: &PItem<F>) -> u64
+// where
+//     F: Float,
+//     S: BuildHasher,
+// {
+//     make_hash(hasher, &val.x.to_ne_bytes())
+// }
+//
+// #[inline]
+// pub(crate) fn make_hash_tuple<S>(hash_builder: &S, val: &(PType, PType)) -> u64
+// where
+//     S: BuildHasher,
+// {
+//     make_hash(hash_builder, &val.0.to_ne_bytes())
 // }
 
-#[inline]
-pub(crate) fn make_hash_point<S>(hash_builder: &S, val: &PItem) -> u64
+impl<M, F> LearnedHashMap<M, F>
 where
-    S: BuildHasher,
-{
-    make_hash(hash_builder, &val.x.to_ne_bytes())
-}
-
-#[inline]
-pub(crate) fn make_hash_tuple<S>(hash_builder: &S, val: &(PType, PType)) -> u64
-where
-    S: BuildHasher,
-{
-    make_hash(hash_builder, &val.0.to_ne_bytes())
-}
-
-impl<M> LearnedHashMap<M>
-where
-    M: Model + Default,
+    F: Float + Default + AsPrimitive<u64> + FromPrimitive,
+    M: Model<F = F> + Default,
 {
     pub fn new() -> Self {
         Self {
@@ -78,7 +64,7 @@ where
         }
     }
 
-    pub fn with_hasher(hasher: LearnedHashbuilder<M>) -> Self {
+    pub fn with_hasher(hasher: LearnedHasher<M, F>) -> Self {
         Self {
             hasher,
             table: Vec::new(),
@@ -96,7 +82,7 @@ where
         }
     }
 
-    pub fn insert(&mut self, p: PItem) -> Option<PItem> {
+    pub fn insert(&mut self, p: PItem<F>) -> Option<PItem<F>> {
         // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
             self.resize();
@@ -111,23 +97,23 @@ where
         self.insert_with_axis(p_value, p)
     }
 
-    fn insert_with_axis(&mut self, p_value: PType, p: PItem) -> Option<PItem> {
+    fn insert_with_axis(&mut self, p_value: F, p: PItem<F>) -> Option<PItem<F>> {
         let mut insert_index = 0;
         if self.sort_by_x {
             // Get index from the hasher
-            let hash = make_hash(&self.hasher, &p.x.to_ne_bytes()) as usize;
+            let hash = make_hash::<M, F>(&mut self.hasher, &p.x) as usize;
             let bucket = &mut self.table[hash];
             for ep in bucket.iter_mut() {
                 if ep == &mut p.clone() {
                     return Some(mem::replace(ep, p));
                 }
-                if ep.x < p_value {
+                if ep.x < p.x {
                     insert_index += 1;
                 }
             }
             bucket.insert(insert_index, p);
         } else {
-            let hash = make_hash(&self.hasher, &p.y.to_ne_bytes()) as usize;
+            let hash = make_hash::<M, F>(&mut self.hasher, &p.y) as usize;
             let bucket = &mut self.table[hash];
             for ep in bucket.iter_mut() {
                 if ep == &mut p.clone() {
@@ -144,49 +130,51 @@ where
         None
     }
 
-    pub fn fit_batch_insert(&mut self, ps: &[PItem]) {
-        let data: Vec<(PType, PType)> = if self.sort_by_x {
+    pub fn batch_insert(&mut self, ps: &[PItem<F>]) {
+        // Allocate table capacity before insert
+        let n = ps.len();
+        self.resize_with_capacity(n * 2);
+        for p in ps.iter() {
+            self.insert(*p);
+        }
+    }
+
+    pub fn fit_batch_insert(&mut self, ps: &[PItem<F>]) {
+        let data: Vec<(F, F)> = if self.hasher.sort_by_lat {
             ps.iter()
-                .map(|&p| (p.x, PType::from_usize(p.id).unwrap()))
+                .map(|&p| (p.x, F::from_usize(p.id).unwrap()))
                 .collect()
         } else {
             ps.iter()
-                .map(|&p| (p.y, PType::from_usize(p.id).unwrap()))
+                .map(|&p| (p.y, F::from_usize(p.id).unwrap()))
                 .collect()
         };
         self.hasher.model.fit_tuple(&data).unwrap();
         self.batch_insert(ps);
     }
 
-    fn batch_insert(&mut self, ps: &[PItem]) {
-        // Allocate table capacity before insert
-        let n = ps.len();
-        self.resize_with_capacity(n);
-        for p in ps.iter() {
-            self.insert(*p);
-        }
-    }
-
-    pub fn get(&mut self, p: &(PType, PType)) -> Option<&PItem> {
-        let hash = make_hash_tuple(&self.hasher, p) as usize;
+    pub fn get(&mut self, p: &(F, F)) -> Option<&PItem<F>> {
+        let hash = make_hash(&mut self.hasher, &p.0) as usize;
         if hash > self.table.capacity() {
             return None;
         }
         self.find_by_hash(hash, p)
     }
 
-    pub fn find_by_hash(&self, hash: usize, p: &(PType, PType)) -> Option<&PItem> {
+    pub fn find_by_hash(&self, hash: usize, p: &(F, F)) -> Option<&PItem<F>> {
         self.table[hash]
             .iter()
             .find(|&ep| ep.x == p.0 && ep.y == p.1)
     }
 
-    pub fn contains_key(&mut self, key: &(PType, PType)) -> bool {
+    #[inline]
+    pub fn contains_key(&mut self, key: &(F, F)) -> bool {
         self.get(key).is_some()
     }
 
-    pub fn remove(&mut self, p: &(PType, PType)) -> Option<PItem> {
-        let hash = make_hash_tuple(&self.hasher, p) as usize;
+    #[inline]
+    pub fn remove(&mut self, p: &(F, F)) -> Option<PItem<F>> {
+        let hash = make_hash(&mut self.hasher, &p.0) as usize;
         let bucket = &mut self.table[hash];
         let i = bucket.iter().position(|ek| ek.x == p.0 && ek.y == p.1)?;
         self.items -= 1;
@@ -195,19 +183,19 @@ where
 
     pub fn range_search(
         &mut self,
-        bottom_left: &(PType, PType),
-        top_right: &(PType, PType),
-    ) -> Option<Vec<PItem>> {
-        let right_hash = make_hash_tuple(&self.hasher, top_right) as usize;
+        bottom_left: &(F, F),
+        top_right: &(F, F),
+    ) -> Option<Vec<PItem<F>>> {
+        let right_hash = make_hash(&mut self.hasher, &top_right.0) as usize;
 
         if right_hash > self.table.capacity() {
             return None;
         }
-        let left_hash = make_hash_tuple(&self.hasher, bottom_left) as usize;
+        let left_hash = make_hash(&mut self.hasher, &bottom_left.0) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
             return None;
         }
-        let mut found: Vec<PItem> = Vec::new();
+        let mut found: Vec<PItem<F>> = Vec::new();
         for i in left_hash..=right_hash {
             let bucket = &self.table[i];
             for item in bucket.iter() {
@@ -230,6 +218,7 @@ where
         self.items
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.items == 0
     }
@@ -247,7 +236,9 @@ where
         new_table.extend((0..target_size).map(|_| SmallVec::new()));
 
         for p in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
-            let hash = make_hash_point(&self.hasher, &p) as usize;
+            //let mut hasher = DefaultHasher::new();
+            //key.hash(&mut hasher);
+            let hash = make_hash(&mut self.hasher, &p.x) as usize;
             new_table[hash].push(p);
         }
 
@@ -263,19 +254,19 @@ mod tests {
 
     #[test]
     fn insert() {
-        let a: PItem = Point {
+        let a: PItem<f64> = Point {
             id: 1,
             x: 0.,
             y: 1.,
         };
 
-        let b: PItem = Point {
+        let b: PItem<f64> = Point {
             id: 2,
             x: 1.,
             y: 0.,
         };
 
-        let mut map = LearnedHashMap::<LinearModel>::new();
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.insert(a);
         map.insert(b);
 
@@ -286,14 +277,14 @@ mod tests {
 
     #[test]
     fn insert_repeated() {
-        let mut map = LearnedHashMap::<LinearModel>::new();
-        let a: PItem = Point {
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+        let a: PItem<f64> = Point {
             id: 1,
             x: 0.,
             y: 1.,
         };
 
-        let b: PItem = Point {
+        let b: PItem<f64> = Point {
             id: 2,
             x: 0.,
             y: 1.,
@@ -310,7 +301,7 @@ mod tests {
 
     #[test]
     fn fit_batch_insert() {
-        let data: Vec<PItem> = vec![
+        let data: Vec<PItem<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -337,7 +328,7 @@ mod tests {
                 y: 1.,
             },
         ];
-        let mut map = LearnedHashMap::<LinearModel>::new();
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.fit_batch_insert(&data);
         dbg!(&map);
 
@@ -376,7 +367,7 @@ mod tests {
 
     #[test]
     fn range_search() {
-        let data: Vec<PItem> = vec![
+        let data: Vec<PItem<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -403,11 +394,11 @@ mod tests {
                 y: 5.,
             },
         ];
-        let mut map = LearnedHashMap::<LinearModel>::new();
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.fit_batch_insert(&data);
         // dbg!(&map);
 
-        let found: Vec<PItem> = vec![
+        let found: Vec<PItem<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -427,7 +418,7 @@ mod tests {
 
         assert_eq!(Some(found), map.range_search(&(1., 1.), &(3.5, 3.)));
 
-        let found: Vec<PItem> = vec![Point {
+        let found: Vec<PItem<f64>> = vec![Point {
             id: 1,
             x: 1.,
             y: 1.,

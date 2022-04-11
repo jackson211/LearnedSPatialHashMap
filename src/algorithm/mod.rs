@@ -1,4 +1,4 @@
 pub use {linear::*, model::*};
 pub mod linear;
-pub mod model;
+mod model;
 mod stats;
