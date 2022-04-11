@@ -40,13 +40,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_euclidean() {
-        let a = Point {
+    fn test_euclidean_f32() {
+        let a = Point::<f32> {
             id: 0,
             x: 0.,
             y: 0.,
         };
-        let b = Point {
+        let b = Point::<f32> {
+            id: 0,
+            x: 1.,
+            y: 1.,
+        };
+        let d = Euclidean::distance(a, b);
+        assert_delta_f32!(d, 1.4142135, 0.00001);
+    }
+
+    #[test]
+    fn test_euclidean_f64() {
+        let a = Point::<f64> {
+            id: 0,
+            x: 0.,
+            y: 0.,
+        };
+        let b = Point::<f64> {
             id: 0,
             x: 1.,
             y: 1.,
@@ -56,13 +72,29 @@ mod tests {
     }
 
     #[test]
-    fn test_manhattan() {
-        let a = Point {
+    fn test_manhattan_f32() {
+        let a = Point::<f32> {
             id: 0,
             x: 0.,
             y: 0.,
         };
-        let b = Point {
+        let b = Point::<f32> {
+            id: 0,
+            x: 1.,
+            y: 1.,
+        };
+        let d = Manhattan::distance(a, b);
+        assert_delta_f32!(d, 2., 0.00001);
+    }
+
+    #[test]
+    fn test_manhattan() {
+        let a = Point::<f64> {
+            id: 0,
+            x: 0.,
+            y: 0.,
+        };
+        let b = Point::<f64> {
             id: 0,
             x: 1.,
             y: 1.,
