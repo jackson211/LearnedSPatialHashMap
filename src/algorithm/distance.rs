@@ -88,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_manhattan() {
+    fn test_manhattan_f64() {
         let a = Point::<f64> {
             id: 0,
             x: 0.,
