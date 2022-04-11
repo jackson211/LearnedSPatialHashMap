@@ -38,7 +38,7 @@ where
     }
 
     fn write(&mut self, data: &F) {
-        self.state = self.model.predict(*data).round().as_();
+        self.state = self.model.predict(*data).floor().as_();
     }
 
     fn finish(&self) -> u64 {

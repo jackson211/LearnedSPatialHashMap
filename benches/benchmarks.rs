@@ -29,21 +29,6 @@ fn bulk_load_baseline(c: &mut Criterion) {
     });
 }
 
-// fn bulk_load_comparison(c: &mut Criterion) {
-//     let mut group = c.benchmark_group("lsph and spade benchmarks");
-//
-//     group.bench_function("lsph sequential", |b| {
-//         let points: Vec<_> = create_random_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
-//         b.iter(move || {
-//             let mut rtree = lsph::RTree::new();
-//             for point in &points {
-//                 rtree.insert(*point);
-//             }
-//         });
-//     });
-//     group.finish();
-// }
-
 // fn tree_creation_quality(c: &mut Criterion) {
 //     const SIZE: usize = 100_000;
 //     let points: Vec<_> = create_random_points(SIZE, SEED_1);

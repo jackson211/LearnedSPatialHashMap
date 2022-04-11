@@ -20,8 +20,7 @@ type Bucket<T> = SmallVec<[PItem<T>; 6]>;
 /// Default Model for the LearndedHashMap is Linear regression
 /// In order to build a ordered HashMap, we need to make sure that the model is monotonic
 ///
-
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct LearnedHashMap<M, F>
 where
     F: Float,
@@ -49,6 +48,7 @@ where
 // {
 //     make_hash(hash_builder, &val.0.to_ne_bytes())
 // }
+//
 
 impl<M, F> LearnedHashMap<M, F>
 where
@@ -57,7 +57,7 @@ where
 {
     pub fn new() -> Self {
         Self {
-            hasher: Default::default(),
+            hasher: LearnedHasher::<M, F>::new(),
             table: Vec::new(),
             items: 0,
             sort_by_x: true,
