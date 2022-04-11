@@ -9,5 +9,6 @@ macro_rules! assert_delta {
 
 pub mod algorithm;
 mod error;
+mod hasher;
 pub mod map;
 pub mod primitives;
