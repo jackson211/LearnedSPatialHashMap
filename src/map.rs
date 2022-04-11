@@ -32,23 +32,20 @@ where
     sort_by_x: bool,
 }
 
-// #[inline]
-// pub(crate) fn make_hash_point<S, F>(hasher: &LearnedHasher<M, F>, val: &PItem<F>) -> u64
-// where
-//     F: Float,
-//     S: BuildHasher,
-// {
-//     make_hash(hasher, &val.x.to_ne_bytes())
-// }
-//
-// #[inline]
-// pub(crate) fn make_hash_tuple<S>(hash_builder: &S, val: &(PType, PType)) -> u64
-// where
-//     S: BuildHasher,
-// {
-//     make_hash(hash_builder, &val.0.to_ne_bytes())
-// }
-//
+impl<M, F> Default for LearnedHashMap<M, F>
+where
+    F: Float + Default + AsPrimitive<u64> + FromPrimitive,
+    M: Model<F = F> + Default,
+{
+    fn default() -> Self {
+        Self {
+            hasher: LearnedHasher::<M, F>::new(),
+            table: Vec::new(),
+            items: 0,
+            sort_by_x: true,
+        }
+    }
+}
 
 impl<M, F> LearnedHashMap<M, F>
 where
@@ -56,12 +53,7 @@ where
     M: Model<F = F> + Default,
 {
     pub fn new() -> Self {
-        Self {
-            hasher: LearnedHasher::<M, F>::new(),
-            table: Vec::new(),
-            items: 0,
-            sort_by_x: true,
-        }
+        Self::default()
     }
 
     pub fn with_hasher(hasher: LearnedHasher<M, F>) -> Self {
@@ -182,39 +174,6 @@ where
         Some(bucket.swap_remove(i))
     }
 
-    pub fn range_search(
-        &mut self,
-        bottom_left: &(F, F),
-        top_right: &(F, F),
-    ) -> Option<Vec<PItem<F>>> {
-        let right_hash = make_hash(&mut self.hasher, &top_right.0) as usize;
-
-        if right_hash > self.table.capacity() {
-            return None;
-        }
-        let left_hash = make_hash(&mut self.hasher, &bottom_left.0) as usize;
-        if left_hash > self.table.capacity() || left_hash > right_hash {
-            return None;
-        }
-        let mut found: Vec<PItem<F>> = Vec::new();
-        for i in left_hash..=right_hash {
-            let bucket = &self.table[i];
-            for item in bucket.iter() {
-                if item.x >= bottom_left.0
-                    && item.y >= bottom_left.1
-                    && item.x <= top_right.0
-                    && item.y <= top_right.1
-                {
-                    found.push(*item);
-                }
-            }
-        }
-        if found.is_empty() {
-            return None;
-        }
-        Some(found)
-    }
-
     #[inline]
     pub fn len(&self) -> usize {
         self.items
@@ -246,6 +205,38 @@ where
         }
 
         self.table = new_table;
+    }
+
+    pub fn range_search(
+        &mut self,
+        bottom_left: &(F, F),
+        top_right: &(F, F),
+    ) -> Option<Vec<PItem<F>>> {
+        let right_hash = make_hash(&mut self.hasher, &top_right.0) as usize;
+        if right_hash > self.table.capacity() {
+            return None;
+        }
+        let left_hash = make_hash(&mut self.hasher, &bottom_left.0) as usize;
+        if left_hash > self.table.capacity() || left_hash > right_hash {
+            return None;
+        }
+        let mut result: Vec<PItem<F>> = Vec::new();
+        for i in left_hash..=right_hash {
+            let bucket = &self.table[i];
+            for item in bucket.iter() {
+                if item.x >= bottom_left.0
+                    && item.y >= bottom_left.1
+                    && item.x <= top_right.0
+                    && item.y <= top_right.1
+                {
+                    result.push(*item);
+                }
+            }
+        }
+        if result.is_empty() {
+            return None;
+        }
+        Some(result)
     }
 }
 
