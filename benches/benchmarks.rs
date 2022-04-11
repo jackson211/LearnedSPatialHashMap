@@ -14,7 +14,7 @@ use lsph::{algorithm::LinearModel, map::LearnedHashMap};
 use criterion::Criterion;
 
 const SEED_1: &[u8; 32] = b"Gv0aHMtHkBGsUXNspGU9fLRuCWkZWHZx";
-const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
+// const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
 
 const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
 

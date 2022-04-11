@@ -46,7 +46,6 @@ where
     }
 }
 
-#[inline]
 pub fn make_hash<M, F>(hasher: &mut LearnedHasher<M, F>, p: &F) -> u64
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,

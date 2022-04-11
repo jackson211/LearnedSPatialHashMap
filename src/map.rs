@@ -13,7 +13,7 @@ const INITIAL_NBUCKETS: usize = 1;
 type PItem<T> = Point<T>;
 
 /// Default Bucket array for HashMap
-type Bucket<T> = SmallVec<[PItem<T>; 4]>;
+type Bucket<T> = SmallVec<[PItem<T>; 6]>;
 
 /// LearnedHashMap takes a model instead of an hasher for hashing indexes in the table
 ///
@@ -97,6 +97,7 @@ where
         self.insert_with_axis(p_value, p)
     }
 
+    #[inline]
     fn insert_with_axis(&mut self, p_value: F, p: PItem<F>) -> Option<PItem<F>> {
         let mut insert_index = 0;
         if self.sort_by_x {
@@ -214,6 +215,7 @@ where
         Some(found)
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.items
     }
@@ -231,6 +233,7 @@ where
         self.resize_with_capacity(target_size);
     }
 
+    #[inline(never)]
     fn resize_with_capacity(&mut self, target_size: usize) {
         let mut new_table = Vec::with_capacity(target_size);
         new_table.extend((0..target_size).map(|_| SmallVec::new()));
