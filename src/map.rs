@@ -34,21 +34,13 @@ pub(crate) fn make_hash<M: Model>(model: &M, val: PType) -> usize {
 }
 
 #[inline]
-pub(crate) fn make_hash_point<M: Model>(model: &M, p: &PItem, sort_by_x: bool) -> usize {
-    if sort_by_x {
-        make_hash(model, p.x)
-    } else {
-        make_hash(model, p.y)
-    }
+pub(crate) fn make_hash_point<M: Model>(model: &M, p: &PItem) -> usize {
+    make_hash(model, p.x)
 }
 
 #[inline]
-pub(crate) fn make_hash_tuple<M: Model>(model: &M, p: &(PType, PType), sort_by_x: bool) -> usize {
-    if sort_by_x {
-        make_hash(model, p.0)
-    } else {
-        make_hash(model, p.1)
-    }
+pub(crate) fn make_hash_tuple<M: Model>(model: &M, p: &(PType, PType)) -> usize {
+    make_hash(model, p.0)
 }
 
 impl<M> LearnedHashMap<M>
@@ -154,7 +146,7 @@ where
     }
 
     pub fn get(&mut self, p: &(PType, PType)) -> Option<&PItem> {
-        let hash = make_hash_tuple(&self.model, p, self.sort_by_x);
+        let hash = make_hash_tuple(&self.model, p);
         if hash > self.table.capacity() {
             return None;
         }
@@ -172,7 +164,7 @@ where
     }
 
     pub fn remove(&mut self, p: &(PType, PType)) -> Option<PItem> {
-        let hash = make_hash_tuple(&self.model, p, self.sort_by_x);
+        let hash = make_hash_tuple(&self.model, p);
         let bucket = &mut self.table[hash];
         let i = bucket.iter().position(|ek| ek.x == p.0 && ek.y == p.1)?;
         self.items -= 1;
@@ -184,12 +176,12 @@ where
         bottom_left: &(PType, PType),
         top_right: &(PType, PType),
     ) -> Option<Vec<PItem>> {
-        let right_hash = make_hash_tuple(&self.model, top_right, self.sort_by_x);
+        let right_hash = make_hash_tuple(&self.model, top_right);
 
         if right_hash > self.table.capacity() {
             return None;
         }
-        let left_hash = make_hash_tuple(&self.model, bottom_left, self.sort_by_x);
+        let left_hash = make_hash_tuple(&self.model, bottom_left);
         if left_hash > self.table.capacity() || left_hash > right_hash {
             return None;
         }
@@ -233,7 +225,7 @@ where
         new_table.extend((0..target_size).map(|_| SmallVec::new()));
 
         for p in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
-            let hash = make_hash_point(&self.model, &p, self.sort_by_x);
+            let hash = make_hash_point(&self.model, &p);
             new_table[hash].push(p);
         }
 
