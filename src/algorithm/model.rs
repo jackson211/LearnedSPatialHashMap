@@ -10,6 +10,7 @@ pub trait Model {
     fn predict(&self, x: Self::F) -> Self::F;
     fn batch_predict(&self, xs: &[Self::F]) -> Vec<Self::F>;
     fn evaluate(&self, x_test: &[Self::F], y_test: &[Self::F]) -> Self::F;
+    fn unpredict(&self, y: Self::F) -> Self::F;
 }
 
 impl<F> Debug for (dyn Model<F = F> + 'static)

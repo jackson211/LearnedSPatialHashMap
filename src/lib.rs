@@ -21,3 +21,6 @@ mod error;
 mod hasher;
 pub mod map;
 pub mod primitives;
+
+#[cfg(test)]
+mod test_utilities;

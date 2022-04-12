@@ -172,6 +172,10 @@ where
         let y_predicted = self.batch_predict(x_test);
         root_mean_squared_error(y_test, &y_predicted)
     }
+
+    fn unpredict(&self, y: F) -> F {
+        (y - self.intercept) / self.coefficient
+    }
 }
 
 #[cfg(test)]

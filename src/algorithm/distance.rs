@@ -4,7 +4,8 @@ use std::marker::PhantomData;
 
 pub trait Distance {
     type F;
-    fn distance(x: Point<Self::F>, y: Point<Self::F>) -> Self::F;
+    fn distance(a: &(Self::F, Self::F), b: &(Self::F, Self::F)) -> Self::F;
+    fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F;
 }
 
 pub struct Euclidean<F: Float> {
@@ -16,8 +17,12 @@ where
     F: Float,
 {
     type F = F;
-    fn distance(a: Point<F>, b: Point<F>) -> F {
-        F::sqrt((a.x - b.x).powi(2) + (a.y - b.y).powi(2))
+    fn distance(a: &(F, F), b: &(F, F)) -> F {
+        F::sqrt((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2))
+    }
+
+    fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F {
+        Self::distance(&(a.x, a.y), &(b.x, b.y))
     }
 }
 
@@ -30,8 +35,12 @@ where
     F: Float,
 {
     type F = F;
-    fn distance(a: Point<F>, b: Point<F>) -> F {
-        (a.x - b.x).abs() + (a.y - b.y).abs()
+    fn distance(a: &(F, F), b: &(F, F)) -> F {
+        (a.0 - b.0).abs() + (a.1 - b.1).abs()
+    }
+
+    fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F {
+        Self::distance(&(a.x, a.y), &(b.x, b.y))
     }
 }
 
@@ -51,7 +60,7 @@ mod tests {
             x: 1.,
             y: 1.,
         };
-        let d = Euclidean::distance(a, b);
+        let d = Euclidean::distance_point(&a, &b);
         assert_delta_f32!(d, 1.4142135, 0.00001);
     }
 
@@ -67,7 +76,7 @@ mod tests {
             x: 1.,
             y: 1.,
         };
-        let d = Euclidean::distance(a, b);
+        let d = Euclidean::distance_point(&a, &b);
         assert_delta!(d, 1.4142135, 0.00001);
     }
 
@@ -83,7 +92,7 @@ mod tests {
             x: 1.,
             y: 1.,
         };
-        let d = Manhattan::distance(a, b);
+        let d = Euclidean::distance_point(&a, &b);
         assert_delta_f32!(d, 2., 0.00001);
     }
 
@@ -99,7 +108,7 @@ mod tests {
             x: 1.,
             y: 1.,
         };
-        let d = Manhattan::distance(a, b);
+        let d = Euclidean::distance_point(&a, &b);
         assert_delta!(d, 2., 0.00001);
     }
 }

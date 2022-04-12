@@ -7,11 +7,9 @@ edition = "2021"
 
 [dependencies]
 num-traits = "0.2.2"
-geo-types = "0.7.2"
 geohash = { path = "geohash" }
 rayon = "1.5.1"
 smallvec = "1.8.0"
-
 
 [dev-dependencies]
 rand = "0.8.5"

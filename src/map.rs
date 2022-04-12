@@ -1,10 +1,16 @@
-use crate::{algorithm::Model, hasher::*, primitives::Point};
+use crate::{
+    algorithm::{distance::*, Model},
+    hasher::*,
+    primitives::Point,
+};
 use core::mem;
 use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
     float::Float,
 };
 use smallvec::SmallVec;
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::fmt::Debug;
 
 const INITIAL_NBUCKETS: usize = 1;
@@ -133,7 +139,7 @@ where
     }
 
     pub fn fit_batch_insert(&mut self, ps: &[PItem<F>]) {
-        let data: Vec<(F, F)> = if self.hasher.sort_by_lat {
+        let data: Vec<(F, F)> = if self.hasher.sort_by_x {
             ps.iter()
                 .map(|&p| (p.x, F::from_usize(p.id).unwrap()))
                 .collect()
@@ -198,28 +204,47 @@ where
         new_table.extend((0..target_size).map(|_| SmallVec::new()));
 
         for p in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
-            //let mut hasher = DefaultHasher::new();
-            //key.hash(&mut hasher);
             let hash = make_hash(&mut self.hasher, &p.x) as usize;
             new_table[hash].push(p);
         }
-
         self.table = new_table;
     }
 
+    /// Range search finds all points for a given 2d range
+    /// Returns all the points within the given range
+    ///        
+    ///       |                    top right
+    ///       |        *-----------*
+    ///       |        | .   .     |
+    ///       |        |  .  .  .  |     
+    ///       |        |       .   |
+    ///    bottom left *-----------*
+    ///       |                
+    ///       |        |           |
+    ///       |________v___________v________
+    ///               left       right       
+    ///               hash       hash
+    /// #Arguments
+    ///
+    /// * `bottom_left` - A tuple containing a pair of points that represent the bottom left of the
+    /// range.
+    ///
+    /// * `top_right` - A tuple containing a pair of points that represent the top right of the
+    /// range.
     pub fn range_search(
         &mut self,
         bottom_left: &(F, F),
         top_right: &(F, F),
     ) -> Option<Vec<PItem<F>>> {
-        let right_hash = make_hash(&mut self.hasher, &top_right.0) as usize;
+        let right_hash = make_hash_point(&mut self.hasher, &top_right) as usize;
         if right_hash > self.table.capacity() {
             return None;
         }
-        let left_hash = make_hash(&mut self.hasher, &bottom_left.0) as usize;
+        let left_hash = make_hash_point(&mut self.hasher, &bottom_left) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
             return None;
         }
+
         let mut result: Vec<PItem<F>> = Vec::new();
         for i in left_hash..=right_hash {
             let bucket = &self.table[i];
@@ -238,6 +263,117 @@ where
         }
         Some(result)
     }
+
+    fn local_min_heap(
+        &self,
+        heap: &mut BinaryHeap<NearestNeighborState<F>>,
+        local_hash: u64,
+        query_point: &(F, F),
+    ) {
+        let bucket = &self.table[local_hash as usize];
+        if !bucket.is_empty() {
+            for p in bucket.iter() {
+                let d = Euclidean::distance(&query_point, &(p.x, p.y));
+                heap.push(NearestNeighborState {
+                    distance: d,
+                    point: p.clone(),
+                });
+            }
+        }
+    }
+
+    /// Nearest neighbor search for the cloest point for given query point
+    pub fn nearest_neighbor(&mut self, query_point: &(F, F)) -> Option<PItem<F>> {
+        let mut hash = make_hash_point(&mut self.hasher, query_point);
+        let max_capacity = self.table.capacity() as u64;
+
+        // if hash out of max bound, still search right most bucket
+        if hash > max_capacity {
+            hash = max_capacity - 1;
+        }
+
+        let mut heap = BinaryHeap::new();
+        let mut min_d = F::max_value();
+        let mut nearest_neighbor = Point::new();
+
+        // Searching at current hash index
+        self.local_min_heap(&mut heap, hash, query_point);
+        let local_min = heap.pop().unwrap();
+        let local_min_d = local_min.distance;
+        // Update the nearest neighbour and minimum distance
+        if local_min_d < min_d {
+            nearest_neighbor = local_min.point;
+            min_d = local_min_d;
+        }
+
+        // Measure left vertical distance from current bucket to left hash bucket
+        let mut left_hash = hash.saturating_sub(1);
+        let mut min_left_d = unhash(&mut self.hasher, left_hash);
+
+        // Iterate over left
+        while min_left_d < min_d {
+            self.local_min_heap(&mut heap, left_hash, query_point);
+            let min_left = heap.pop().unwrap();
+            min_left_d = min_left.distance;
+            // Update the nearest neighbour and minimum distance
+            if min_left_d < min_d {
+                nearest_neighbor = min_left.point;
+                min_d = min_left_d;
+            }
+            // Move to next left bucket
+            left_hash = left_hash.saturating_sub(1);
+        }
+
+        // Measure right vertical distance from current bucket to right hash bucket
+        let mut right_hash = hash + 1;
+        let mut min_right_d = unhash(&mut self.hasher, right_hash);
+
+        // Iterate over right
+        while min_right_d < min_d {
+            self.local_min_heap(&mut heap, right_hash, query_point);
+            let min_right = heap.pop().unwrap();
+            min_right_d = min_right.distance;
+            // Update the nearest neighbour and minimum distance
+            if min_right_d < min_d {
+                nearest_neighbor = min_right.point;
+                min_d = min_right_d;
+            }
+            // Move to next right bucket
+            right_hash += 1;
+        }
+
+        Some(nearest_neighbor)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+struct NearestNeighborState<F>
+where
+    F: Float,
+{
+    distance: F,
+    point: Point<F>,
+}
+
+impl<F: Float> Eq for NearestNeighborState<F> {}
+
+impl<F> PartialOrd for NearestNeighborState<F>
+where
+    F: Float,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // We flip the ordering on distance, so the queue becomes a min-heap
+        other.distance.partial_cmp(&self.distance)
+    }
+}
+
+impl<F> Ord for NearestNeighborState<F>
+where
+    F: Float,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -245,6 +381,7 @@ mod tests {
     use super::*;
     use crate::algorithm::LinearModel;
     use crate::primitives::point::Point;
+    use crate::test_utilities::*;
 
     #[test]
     fn insert() {
@@ -420,5 +557,32 @@ mod tests {
 
         assert_eq!(Some(found), map.range_search(&(1., 1.), &(3., 1.)));
         assert_eq!(None, map.range_search(&(4., 2.), &(5., 3.)));
+    }
+
+    #[test]
+    fn test_nearest_neighbor() {
+        let points = create_random_point_type_points(1000, SEED_1);
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+        map.fit_batch_insert(&points.clone());
+
+        let sample_points = create_random_point_type_points(100, SEED_2);
+        for sample_point in &sample_points {
+            let mut nearest = None;
+            let mut closest_dist = ::core::f64::INFINITY;
+            for point in &points {
+                let delta = [point.x - sample_point.x, point.y - sample_point.y];
+                let new_dist = delta[0] * delta[0] + delta[1] * delta[1];
+                if new_dist < closest_dist {
+                    closest_dist = new_dist;
+                    nearest = Some(point);
+                }
+            }
+            dbg!(nearest);
+            assert_eq!(
+                nearest.unwrap(),
+                &map.nearest_neighbor(&(sample_point.x, sample_point.y))
+                    .unwrap()
+            );
+        }
     }
 }
