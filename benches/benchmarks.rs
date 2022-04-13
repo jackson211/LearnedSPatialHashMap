@@ -14,7 +14,7 @@ use lsph::{algorithm::LinearModel, map::LearnedHashMap};
 use criterion::Criterion;
 
 const SEED_1: &[u8; 32] = b"Gv0aHMtHkBGsUXNspGU9fLRuCWkZWHZx";
-// const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
+const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
 
 const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
 
@@ -29,33 +29,6 @@ fn bulk_load_baseline(c: &mut Criterion) {
     });
 }
 
-// fn tree_creation_quality(c: &mut Criterion) {
-//     const SIZE: usize = 100_000;
-//     let points: Vec<_> = create_random_points(SIZE, SEED_1);
-//     let tree_bulk_loaded = RTree::<_, Params>::bulk_load_with_params(points.clone());
-//     let mut tree_sequential = RTree::new();
-//     for point in &points {
-//         tree_sequential.insert(*point);
-//     }
-//
-//     let query_points = create_random_points(100, SEED_2);
-//     let query_points_cloned_1 = query_points.clone();
-//     c.bench_function("bulk load quality", move |b| {
-//         b.iter(|| {
-//             for query_point in &query_points {
-//                 tree_bulk_loaded.nearest_neighbor(&query_point).unwrap();
-//             }
-//         })
-//     })
-//     .bench_function("sequential load quality", move |b| {
-//         b.iter(|| {
-//             for query_point in &query_points_cloned_1 {
-//                 tree_sequential.nearest_neighbor(&query_point).unwrap();
-//             }
-//         });
-//     });
-// }
-//
 fn locate_successful(c: &mut Criterion) {
     let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
     let query_point = create_random_points(100_000, SEED_1)[500];
@@ -66,7 +39,7 @@ fn locate_successful(c: &mut Criterion) {
         b.iter(|| map.get(&query_point).is_some())
     });
 }
-//
+
 fn locate_unsuccessful(c: &mut Criterion) {
     let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
 
@@ -78,13 +51,29 @@ fn locate_unsuccessful(c: &mut Criterion) {
     });
 }
 
+fn nearest_neighbor(c: &mut Criterion) {
+    const SIZE: usize = 100_000;
+    let points: Vec<_> = create_random_point_type_points(SIZE, SEED_1);
+
+    let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+    map.fit_batch_insert(&points);
+
+    let query_points = create_random_points(100, SEED_2);
+    c.bench_function("nearest_neigbor", move |b| {
+        b.iter(|| {
+            for query_point in &query_points {
+                map.nearest_neighbor(&query_point).unwrap();
+            }
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bulk_load_baseline,
-    // bulk_load_comparison,
-    // tree_creation_quality,
     locate_successful,
-    locate_unsuccessful
+    locate_unsuccessful,
+    nearest_neighbor,
 );
 criterion_main!(benches);
 
