@@ -51,7 +51,7 @@ where
 
 impl<M, F> LearnedHashMap<M, F>
 where
-    F: Float + Default + AsPrimitive<u64> + FromPrimitive,
+    F: Float + Default + AsPrimitive<u64> + FromPrimitive + Debug,
     M: Model<F = F> + Default + Clone,
 {
     pub fn new() -> Self {
@@ -246,8 +246,8 @@ where
             let bucket = &self.table[i];
             for item in bucket.iter() {
                 if item.x >= bottom_left.0
-                    && item.y >= bottom_left.1
                     && item.x <= top_right.0
+                    && item.y >= bottom_left.1
                     && item.y <= top_right.1
                 {
                     result.push(*item);
@@ -294,7 +294,6 @@ where
 
         // Searching at current hash index
         self.local_min_heap(&mut heap, hash, query_point);
-
         match heap.pop() {
             Some(v) => {
                 let local_min_d = v.distance;
@@ -310,18 +309,18 @@ where
         // Measure left vertical distance from current bucket to left hash bucket
         // left hash must >= 0
         let mut left_hash = hash.saturating_sub(1);
-
         // Unhash the left_hash, then calculate the vertical distance between
         // left hash point and query point
-        let left_x = unhash(&mut self.hasher, left_hash);
-        let mut min_left_d = Euclidean::distance(&(query_point.0, F::zero()), &(left_x, F::zero()));
+        let mut left_x = unhash(&mut self.hasher, left_hash);
+        let mut left_hash_d =
+            Euclidean::distance(&(query_point.0, F::zero()), &(left_x, F::zero()));
 
         // Iterate over left
-        while min_left_d < min_d {
+        while left_hash_d < min_d {
             self.local_min_heap(&mut heap, left_hash, query_point);
             match heap.pop() {
                 Some(v) => {
-                    min_left_d = v.distance;
+                    let min_left_d = v.distance;
                     // Update the nearest neighbour and minimum distance
                     if min_left_d < min_d {
                         nearest_neighbor = v.point;
@@ -331,24 +330,28 @@ where
                 None => (),
             }
             // Move to next left bucket
+            if left_hash == 0 {
+                break;
+            }
             left_hash = left_hash.saturating_sub(1);
+            left_x = unhash(&mut self.hasher, left_hash);
+            left_hash_d = Euclidean::distance(&(query_point.0, F::zero()), &(left_x, F::zero()));
         }
 
         // Measure right vertical distance from current bucket to right hash bucket
         let mut right_hash = hash + 1;
-
         // Unhash the right_hash, then calculate the vertical distance between
         // right hash point and query point
-        let right_x = unhash(&mut self.hasher, right_hash);
-        let mut min_right_d =
+        let mut right_x = unhash(&mut self.hasher, right_hash);
+        let mut right_hash_d =
             Euclidean::distance(&(query_point.0, F::zero()), &(right_x, F::zero()));
 
         // Iterate over right
-        while min_right_d < min_d {
+        while right_hash_d < min_d {
             self.local_min_heap(&mut heap, right_hash, query_point);
             match heap.pop() {
                 Some(v) => {
-                    min_right_d = v.distance;
+                    let min_right_d = v.distance;
                     // Update the nearest neighbour and minimum distance
                     if min_right_d < min_d {
                         nearest_neighbor = v.point;
@@ -357,8 +360,14 @@ where
                 }
                 None => (),
             }
+
             // Move to next right bucket
-            right_hash += 1;
+            right_hash = right_hash + 1;
+            if right_hash == self.table.capacity() as u64 {
+                break;
+            }
+            right_x = unhash(&mut self.hasher, right_hash);
+            right_hash_d = Euclidean::distance(&(query_point.0, F::zero()), &(right_x, F::zero()));
         }
 
         Some(nearest_neighbor)
@@ -660,6 +669,9 @@ mod tests {
         for sample_point in &sample_points {
             let mut nearest = None;
             let mut closest_dist = ::core::f64::INFINITY;
+
+            dbg!(i);
+            dbg!(sample_point);
             for point in &points {
                 let new_dist = Euclidean::distance_point(&point, &sample_point);
                 if new_dist < closest_dist {
@@ -670,9 +682,6 @@ mod tests {
             let map_nearest = map
                 .nearest_neighbor(&(sample_point.x, sample_point.y))
                 .unwrap();
-            dbg!(nearest);
-            dbg!(map_nearest);
-            dbg!(i);
             assert_eq!(nearest.unwrap(), &map_nearest);
             i += 1;
         }
