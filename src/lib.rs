@@ -16,6 +16,7 @@ macro_rules! assert_delta_f32 {
     };
 }
 
+pub use map::*;
 pub mod algorithm;
 mod error;
 mod hasher;

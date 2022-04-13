@@ -1,5 +1,6 @@
 pub use {linear::*, model::*};
 pub mod distance;
-pub mod linear;
+mod linear;
 mod model;
+pub mod nn;
 mod stats;

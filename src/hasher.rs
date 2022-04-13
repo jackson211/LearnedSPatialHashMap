@@ -74,9 +74,9 @@ where
     M: Model<F = F> + Default,
 {
     if hasher.sort_by_x {
-        return make_hash(hasher, &p.0);
+        make_hash(hasher, &p.0)
     } else {
-        return make_hash(hasher, &p.1);
+        make_hash(hasher, &p.1)
     }
 }
 

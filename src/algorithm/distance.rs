@@ -92,7 +92,7 @@ mod tests {
             x: 1.,
             y: 1.,
         };
-        let d = Euclidean::distance_point(&a, &b);
+        let d = Manhattan::distance_point(&a, &b);
         assert_delta_f32!(d, 2., 0.00001);
     }
 
@@ -108,7 +108,7 @@ mod tests {
             x: 1.,
             y: 1.,
         };
-        let d = Euclidean::distance_point(&a, &b);
+        let d = Manhattan::distance_point(&a, &b);
         assert_delta!(d, 2., 0.00001);
     }
 }

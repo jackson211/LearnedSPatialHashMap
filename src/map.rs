@@ -1,5 +1,5 @@
 use crate::{
-    algorithm::{distance::*, Model},
+    algorithm::{distance::*, nn::*, Model},
     hasher::*,
     primitives::Point,
 };
@@ -9,31 +9,27 @@ use num_traits::{
     float::Float,
 };
 use smallvec::SmallVec;
-use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::fmt::Debug;
 
 const INITIAL_NBUCKETS: usize = 1;
 
-/// Default Point Item for HashMap
-type PItem<T> = Point<T>;
-
 /// Default Bucket array for HashMap
-type Bucket<T> = SmallVec<[PItem<T>; 6]>;
+type Bucket<T> = SmallVec<[Point<T>; 6]>;
 
 /// LearnedHashMap takes a model instead of an hasher for hashing indexes in the table
 ///
 /// Default Model for the LearndedHashMap is Linear regression
 /// In order to build a ordered HashMap, we need to make sure that the model is monotonic
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LearnedHashMap<M, F>
 where
     F: Float,
-    M: Model<F = F> + Default,
+    M: Model<F = F> + Default + Clone,
 {
-    hasher: LearnedHasher<M, F>,
-    table: Vec<Bucket<F>>,
+    pub hasher: LearnedHasher<M, F>,
+    pub table: Vec<Bucket<F>>,
     items: usize,
     sort_by_x: bool,
 }
@@ -41,7 +37,7 @@ where
 impl<M, F> Default for LearnedHashMap<M, F>
 where
     F: Float + Default + AsPrimitive<u64> + FromPrimitive,
-    M: Model<F = F> + Default,
+    M: Model<F = F> + Default + Clone,
 {
     fn default() -> Self {
         Self {
@@ -56,7 +52,7 @@ where
 impl<M, F> LearnedHashMap<M, F>
 where
     F: Float + Default + AsPrimitive<u64> + FromPrimitive,
-    M: Model<F = F> + Default,
+    M: Model<F = F> + Default + Clone,
 {
     pub fn new() -> Self {
         Self::default()
@@ -80,7 +76,7 @@ where
         }
     }
 
-    pub fn insert(&mut self, p: PItem<F>) -> Option<PItem<F>> {
+    pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
         // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
             self.resize();
@@ -96,7 +92,7 @@ where
     }
 
     #[inline]
-    fn insert_with_axis(&mut self, p_value: F, p: PItem<F>) -> Option<PItem<F>> {
+    fn insert_with_axis(&mut self, p_value: F, p: Point<F>) -> Option<Point<F>> {
         let mut insert_index = 0;
         if self.sort_by_x {
             // Get index from the hasher
@@ -129,7 +125,7 @@ where
         None
     }
 
-    pub fn batch_insert(&mut self, ps: &[PItem<F>]) {
+    pub fn batch_insert(&mut self, ps: &[Point<F>]) {
         // Allocate table capacity before insert
         let n = ps.len();
         self.resize_with_capacity(n * 2);
@@ -138,7 +134,7 @@ where
         }
     }
 
-    pub fn fit_batch_insert(&mut self, ps: &[PItem<F>]) {
+    pub fn fit_batch_insert(&mut self, ps: &[Point<F>]) {
         let data: Vec<(F, F)> = if self.hasher.sort_by_x {
             ps.iter()
                 .map(|&p| (p.x, F::from_usize(p.id).unwrap()))
@@ -152,7 +148,7 @@ where
         self.batch_insert(ps);
     }
 
-    pub fn get(&mut self, p: &(F, F)) -> Option<&PItem<F>> {
+    pub fn get(&mut self, p: &(F, F)) -> Option<&Point<F>> {
         let hash = make_hash(&mut self.hasher, &p.0) as usize;
         if hash > self.table.capacity() {
             return None;
@@ -160,7 +156,7 @@ where
         self.find_by_hash(hash, p)
     }
 
-    pub fn find_by_hash(&self, hash: usize, p: &(F, F)) -> Option<&PItem<F>> {
+    pub fn find_by_hash(&self, hash: usize, p: &(F, F)) -> Option<&Point<F>> {
         self.table[hash]
             .iter()
             .find(|&ep| ep.x == p.0 && ep.y == p.1)
@@ -172,7 +168,7 @@ where
     }
 
     #[inline]
-    pub fn remove(&mut self, p: &(F, F)) -> Option<PItem<F>> {
+    pub fn remove(&mut self, p: &(F, F)) -> Option<Point<F>> {
         let hash = make_hash(&mut self.hasher, &p.0) as usize;
         let bucket = &mut self.table[hash];
         let i = bucket.iter().position(|ek| ek.x == p.0 && ek.y == p.1)?;
@@ -213,17 +209,17 @@ where
     /// Range search finds all points for a given 2d range
     /// Returns all the points within the given range
     ///        
-    ///       |                    top right
-    ///       |        *-----------*
-    ///       |        | .   .     |
-    ///       |        |  .  .  .  |     
-    ///       |        |       .   |
-    ///    bottom left *-----------*
-    ///       |                
-    ///       |        |           |
-    ///       |________v___________v________
-    ///               left       right       
-    ///               hash       hash
+    //       |                    top right
+    //       |        *-----------*
+    //       |        | .   .     |
+    //       |        |  .  .  .  |
+    //       |        |       .   |
+    //    bottom left *-----------*
+    //       |
+    //       |        |           |
+    //       |________v___________v________
+    //               left       right
+    //               hash       hash
     /// #Arguments
     ///
     /// * `bottom_left` - A tuple containing a pair of points that represent the bottom left of the
@@ -235,17 +231,17 @@ where
         &mut self,
         bottom_left: &(F, F),
         top_right: &(F, F),
-    ) -> Option<Vec<PItem<F>>> {
-        let right_hash = make_hash_point(&mut self.hasher, &top_right) as usize;
+    ) -> Option<Vec<Point<F>>> {
+        let right_hash = make_hash_point(&mut self.hasher, top_right) as usize;
         if right_hash > self.table.capacity() {
             return None;
         }
-        let left_hash = make_hash_point(&mut self.hasher, &bottom_left) as usize;
+        let left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
             return None;
         }
 
-        let mut result: Vec<PItem<F>> = Vec::new();
+        let mut result: Vec<Point<F>> = Vec::new();
         for i in left_hash..=right_hash {
             let bucket = &self.table[i];
             for item in bucket.iter() {
@@ -273,17 +269,17 @@ where
         let bucket = &self.table[local_hash as usize];
         if !bucket.is_empty() {
             for p in bucket.iter() {
-                let d = Euclidean::distance(&query_point, &(p.x, p.y));
+                let d = Euclidean::distance(query_point, &(p.x, p.y));
                 heap.push(NearestNeighborState {
                     distance: d,
-                    point: p.clone(),
+                    point: *p,
                 });
             }
         }
     }
 
     /// Nearest neighbor search for the cloest point for given query point
-    pub fn nearest_neighbor(&mut self, query_point: &(F, F)) -> Option<PItem<F>> {
+    pub fn nearest_neighbor(&mut self, query_point: &(F, F)) -> Option<Point<F>> {
         let mut hash = make_hash_point(&mut self.hasher, query_point);
         let max_capacity = self.table.capacity() as u64;
 
@@ -343,7 +339,7 @@ where
 
         // Unhash the right_hash, then calculate the vertical distance between
         // right hash point and query point
-        let right_x = unhash(&mut self.hasher, left_hash);
+        let right_x = unhash(&mut self.hasher, right_hash);
         let mut min_right_d =
             Euclidean::distance(&(query_point.0, F::zero()), &(right_x, F::zero()));
 
@@ -369,33 +365,104 @@ where
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
-struct NearestNeighborState<F>
+pub struct Iter<'a, M, F>
 where
     F: Float,
+    M: Model<F = F> + Default + Clone,
 {
-    distance: F,
-    point: Point<F>,
+    map: &'a LearnedHashMap<M, F>,
+    bucket: usize,
+    at: usize,
 }
 
-impl<F: Float> Eq for NearestNeighborState<F> {}
-
-impl<F> PartialOrd for NearestNeighborState<F>
+impl<'a, M, F> Iterator for Iter<'a, M, F>
 where
     F: Float,
+    M: Model<F = F> + Default + Clone,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // We flip the ordering on distance, so the queue becomes a min-heap
-        other.distance.partial_cmp(&self.distance)
+    type Item = &'a Point<F>;
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.table.get(self.bucket) {
+                Some(bucket) => {
+                    match bucket.get(self.at) {
+                        Some(p) => {
+                            // move along self.at and self.bucket
+                            self.at += 1;
+                            break Some(p);
+                        }
+                        None => {
+                            self.bucket += 1;
+                            self.at = 0;
+                            continue;
+                        }
+                    }
+                }
+                None => break None,
+            }
+        }
     }
 }
 
-impl<F> Ord for NearestNeighborState<F>
+impl<'a, M, F> IntoIterator for &'a LearnedHashMap<M, F>
 where
     F: Float,
+    M: Model<F = F> + Default + Clone,
 {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+    type Item = &'a Point<F>;
+    type IntoIter = Iter<'a, M, F>;
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            map: self,
+            bucket: 0,
+            at: 0,
+        }
+    }
+}
+
+pub struct IntoIter<M, F>
+where
+    F: Float,
+    M: Model<F = F> + Default + Clone,
+{
+    map: LearnedHashMap<M, F>,
+    bucket: usize,
+}
+
+impl<M, F> Iterator for IntoIter<M, F>
+where
+    F: Float,
+    M: Model<F = F> + Default + Clone,
+{
+    type Item = Point<F>;
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.table.get_mut(self.bucket) {
+                Some(bucket) => match bucket.pop() {
+                    Some(x) => break Some(x),
+                    None => {
+                        self.bucket += 1;
+                        continue;
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<M, F> IntoIterator for LearnedHashMap<M, F>
+where
+    F: Float,
+    M: Model<F = F> + Default + Clone,
+{
+    type Item = Point<F>;
+    type IntoIter = IntoIter<M, F>;
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            map: self,
+            bucket: 0,
+        }
     }
 }
 
@@ -408,13 +475,13 @@ mod tests {
 
     #[test]
     fn insert() {
-        let a: PItem<f64> = Point {
+        let a: Point<f64> = Point {
             id: 1,
             x: 0.,
             y: 1.,
         };
 
-        let b: PItem<f64> = Point {
+        let b: Point<f64> = Point {
             id: 2,
             x: 1.,
             y: 0.,
@@ -432,13 +499,13 @@ mod tests {
     #[test]
     fn insert_repeated() {
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        let a: PItem<f64> = Point {
+        let a: Point<f64> = Point {
             id: 1,
             x: 0.,
             y: 1.,
         };
 
-        let b: PItem<f64> = Point {
+        let b: Point<f64> = Point {
             id: 2,
             x: 0.,
             y: 1.,
@@ -455,7 +522,7 @@ mod tests {
 
     #[test]
     fn fit_batch_insert() {
-        let data: Vec<PItem<f64>> = vec![
+        let data: Vec<Point<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -521,7 +588,7 @@ mod tests {
 
     #[test]
     fn range_search() {
-        let data: Vec<PItem<f64>> = vec![
+        let data: Vec<Point<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -552,7 +619,7 @@ mod tests {
         map.fit_batch_insert(&data);
         // dbg!(&map);
 
-        let found: Vec<PItem<f64>> = vec![
+        let found: Vec<Point<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -572,7 +639,7 @@ mod tests {
 
         assert_eq!(Some(found), map.range_search(&(1., 1.), &(3.5, 3.)));
 
-        let found: Vec<PItem<f64>> = vec![Point {
+        let found: Vec<Point<f64>> = vec![Point {
             id: 1,
             x: 1.,
             y: 1.,
