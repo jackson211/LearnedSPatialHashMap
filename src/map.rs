@@ -1,5 +1,5 @@
 use crate::{
-    algorithm::{distance::*, nn::*, Model},
+    algorithm::{distance::*, nn::*, stats::variance, Model},
     hasher::*,
     primitives::Point,
 };
@@ -134,6 +134,11 @@ where
         }
     }
 
+    // fn axis_select(&mut self, ps: &[Point<F>]) {
+    //     let px = ps.iter().map(|&p| p.x).collect();
+    //     let x_variance = variance(&px);
+    // }
+
     pub fn fit_batch_insert(&mut self, ps: &[Point<F>]) {
         let data: Vec<(F, F)> = if self.hasher.sort_by_x {
             ps.iter()
@@ -210,11 +215,11 @@ where
     /// Returns all the points within the given range
     ///        
     //       |                    top right
-    //       |        *-----------*
+    //       |        .-----------*
     //       |        | .   .     |
     //       |        |  .  .  .  |
     //       |        |       .   |
-    //    bottom left *-----------*
+    //    bottom left *-----------.
     //       |
     //       |        |           |
     //       |________v___________v________
@@ -279,6 +284,24 @@ where
     }
 
     /// Nearest neighbor search for the cloest point for given query point
+    /// Returns the closest point
+    ///
+    //       |
+    //       |
+    //       |         .         nearest neighbor
+    //       |         |.    *  ./
+    //       |         ||    | .|
+    //       |  expand <--------> expand
+    //       |  left         |     right
+    //       |               |
+    //       |_______________v_____________
+    //                     query
+    //                     point
+    //
+    /// #Arguments
+    ///
+    /// * `query_point` - A tuple containing a pair of points for querying
+    ///
     pub fn nearest_neighbor(&mut self, query_point: &(F, F)) -> Option<Point<F>> {
         let mut hash = make_hash_point(&mut self.hasher, query_point);
         let max_capacity = self.table.capacity() as u64;
@@ -334,6 +357,8 @@ where
                 break;
             }
             left_hash = left_hash.saturating_sub(1);
+
+            // Update next right side bucket distance
             left_x = unhash(&mut self.hasher, left_hash);
             left_hash_d = Euclidean::distance(&(query_point.0, F::zero()), &(left_x, F::zero()));
         }
@@ -362,10 +387,11 @@ where
             }
 
             // Move to next right bucket
-            right_hash = right_hash + 1;
+            right_hash += 1;
             if right_hash == self.table.capacity() as u64 {
                 break;
             }
+            // Update next right side bucket distance
             right_x = unhash(&mut self.hasher, right_hash);
             right_hash_d = Euclidean::distance(&(query_point.0, F::zero()), &(right_x, F::zero()));
         }
@@ -669,9 +695,6 @@ mod tests {
         for sample_point in &sample_points {
             let mut nearest = None;
             let mut closest_dist = ::core::f64::INFINITY;
-
-            dbg!(i);
-            dbg!(sample_point);
             for point in &points {
                 let new_dist = Euclidean::distance_point(&point, &sample_point);
                 if new_dist < closest_dist {
@@ -683,7 +706,7 @@ mod tests {
                 .nearest_neighbor(&(sample_point.x, sample_point.y))
                 .unwrap();
             assert_eq!(nearest.unwrap(), &map_nearest);
-            i += 1;
+            i = i + 1;
         }
     }
 }
