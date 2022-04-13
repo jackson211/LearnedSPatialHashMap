@@ -287,10 +287,10 @@ where
     /// Returns the closest point
     ///
     //       |
-    //       |
-    //       |         .         nearest neighbor
-    //       |         |.    *  ./
-    //       |         ||    | .|
+    //       |            .
+    //       |         .  |
+    //       |         |. |  *  . <- nearest neighbor
+    //       |         || |  | .|
     //       |  expand <--------> expand
     //       |  left         |     right
     //       |               |
