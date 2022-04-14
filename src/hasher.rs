@@ -1,20 +1,16 @@
-use crate::algorithm::Model;
+use crate::model::Model;
 use num_traits::cast::{AsPrimitive, FromPrimitive};
 use num_traits::float::Float;
 
 /// LearnedHasher takes a model and produces hash from the model
 #[derive(Debug, Clone)]
-pub struct LearnedHasher<M, F>
-where
-    F: Float,
-    M: Model<F = F>,
-{
+pub struct LearnedHasher<M> {
     state: u64,
     pub model: M,
     pub sort_by_x: bool,
 }
 
-impl<M, F> Default for LearnedHasher<M, F>
+impl<M, F> Default for LearnedHasher<M>
 where
     F: Float,
     M: Model<F = F> + Default,
@@ -28,7 +24,7 @@ where
     }
 }
 
-impl<M, F> LearnedHasher<M, F>
+impl<M, F> LearnedHasher<M>
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,
     M: Model<F = F> + Default,
@@ -59,7 +55,7 @@ where
     }
 }
 
-pub fn make_hash<M, F>(hasher: &mut LearnedHasher<M, F>, p: &F) -> u64
+pub fn make_hash<M, F>(hasher: &mut LearnedHasher<M>, p: &F) -> u64
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,
     M: Model<F = F> + Default,
@@ -68,7 +64,7 @@ where
     hasher.finish()
 }
 
-pub fn make_hash_point<M, F>(hasher: &mut LearnedHasher<M, F>, p: &(F, F)) -> u64
+pub fn make_hash_point<M, F>(hasher: &mut LearnedHasher<M>, p: &(F, F)) -> u64
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,
     M: Model<F = F> + Default,
@@ -81,7 +77,7 @@ where
 }
 
 /// Reverse the hash function, which it takes a hash and returns float
-pub fn unhash<M, F>(hasher: &mut LearnedHasher<M, F>, hash: u64) -> F
+pub fn unhash<M, F>(hasher: &mut LearnedHasher<M>, hash: u64) -> F
 where
     F: Float + FromPrimitive + AsPrimitive<u64>,
     M: Model<F = F> + Default,
@@ -92,18 +88,18 @@ where
 #[cfg(test)]
 mod tests {
     use super::LearnedHasher;
-    use crate::algorithm::LinearModel;
+    use crate::model::LinearModel;
 
     #[test]
     fn hasher_with_empty_model() {
-        let mut hasher: LearnedHasher<LinearModel<f64>, f64> = LearnedHasher::new();
+        let mut hasher: LearnedHasher<LinearModel<f64>> = LearnedHasher::new();
         hasher.write(&10f64);
         assert_eq!(0u64, hasher.finish());
     }
 
     #[test]
     fn unhash() {
-        let mut hasher: LearnedHasher<LinearModel<f64>, f64> =
+        let mut hasher: LearnedHasher<LinearModel<f64>> =
             LearnedHasher::with_model(LinearModel {
                 coefficient: 3.,
                 intercept: 2.,

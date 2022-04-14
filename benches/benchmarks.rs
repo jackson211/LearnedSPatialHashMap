@@ -9,7 +9,7 @@ use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 
 use lsph::primitives::point::Point;
-use lsph::{algorithm::LinearModel, map::LearnedHashMap};
+use lsph::{model::LinearModel, map::LearnedHashMap};
 
 use criterion::Criterion;
 

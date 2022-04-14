@@ -78,8 +78,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::algorithm::stats::*;
-    // use crate::algorithm::*;
+    use super::*;
 
     #[test]
     fn mean_empty_vec() {

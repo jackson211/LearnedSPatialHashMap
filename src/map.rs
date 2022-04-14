@@ -1,8 +1,4 @@
-use crate::{
-    algorithm::{distance::*, nn::*, Model},
-    hasher::*,
-    primitives::Point,
-};
+use crate::{distance::*, hasher::*, model::Model, nn::*, primitives::Point};
 use core::mem;
 use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
@@ -21,15 +17,14 @@ type Bucket<T> = SmallVec<[Point<T>; 6]>;
 ///
 /// Default Model for the LearndedHashMap is Linear regression
 /// In order to build a ordered HashMap, we need to make sure that the model is monotonic
-///
 #[derive(Debug, Clone)]
 pub struct LearnedHashMap<M, F>
 where
     F: Float,
     M: Model<F = F> + Default + Clone,
 {
-    pub hasher: LearnedHasher<M, F>,
-    pub table: Vec<Bucket<F>>,
+    hasher: LearnedHasher<M>,
+    table: Vec<Bucket<F>>,
     items: usize,
     sort_by_x: bool,
 }
@@ -41,7 +36,7 @@ where
 {
     fn default() -> Self {
         Self {
-            hasher: LearnedHasher::<M, F>::new(),
+            hasher: LearnedHasher::<M>::new(),
             table: Vec::new(),
             items: 0,
             sort_by_x: true,
@@ -58,7 +53,7 @@ where
         Self::default()
     }
 
-    pub fn with_hasher(hasher: LearnedHasher<M, F>) -> Self {
+    pub fn with_hasher(hasher: LearnedHasher<M>) -> Self {
         Self {
             hasher,
             table: Vec::new(),
@@ -504,7 +499,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithm::LinearModel;
+    use crate::model::LinearModel;
     use crate::primitives::point::Point;
     use crate::test_utilities::*;
 
