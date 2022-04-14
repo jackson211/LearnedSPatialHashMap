@@ -285,19 +285,19 @@ where
 
     /// Nearest neighbor search for the cloest point for given query point
     /// Returns the closest point
-    ///
-    //       |
-    //       |            .
-    //       |         .  |
-    //       |         |. |  *  . <- nearest neighbor
-    //       |         || |  | .|
-    //       |  expand <--------> expand
-    //       |  left         |     right
-    //       |               |
-    //       |_______________v_____________
-    //                     query
-    //                     point
-    //
+    ///```text
+    ///      |
+    ///      |            .
+    ///      |         .  |
+    ///      |         |. |  *  . <- nearest neighbor
+    ///      |         || |  | .|
+    ///      |  expand <--------> expand
+    ///      |  left         |     right
+    ///      |               |
+    ///      |_______________v_____________
+    ///                    query
+    ///                    point
+    ///```
     /// #Arguments
     ///
     /// * `query_point` - A tuple containing a pair of points for querying

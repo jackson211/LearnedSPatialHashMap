@@ -1,13 +1,13 @@
 use crate::{
     algorithm::{model::*, stats::root_mean_squared_error},
-    error::Error,
+    error::*,
 };
 
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, float::Float};
 use std::fmt::Debug;
 
-pub fn slr<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
+fn slr<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
 where
     I: Iterator<Item = (F, F)>,
     F: Float + Debug,
@@ -21,7 +21,7 @@ where
     });
     let slope = cov_diff_sum / sq_diff_sum;
     if slope.is_nan() {
-        return Err(Error::TooSteep);
+        return Err(Error::SteepSlopeError);
     }
     let intercept = y_mean - slope * x_mean;
     Ok((slope, intercept))
@@ -43,23 +43,19 @@ where
 /// * the slope is too steep to represent, approaching infinity
 /// * the number of elements cannot be represented as an `F`
 ///
-pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Result<(F, F), Error>
+fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
     F: Float + Sum + Debug,
 {
-    if xs.len() != ys.len() {
-        return Err(Error::InputLenDif);
-    }
+    assert_empty!(xs);
+    assert_empty!(ys);
+    assert_eq_len!(xs, ys);
 
-    if xs.is_empty() {
-        return Err(Error::Mean);
-    }
+    let n = F::from(xs.len()).ok_or(Error::EmptyValError)?;
 
-    let n = F::from(xs.len()).ok_or(Error::Mean)?;
     // compute the mean of x and y
-
     let x_sum: F = xs.iter().cloned().map(Into::into).sum();
     let x_mean = x_sum / n;
     let y_sum: F = ys.iter().cloned().map(Into::into).sum();
@@ -87,18 +83,17 @@ where
 /// * `xys` is empty
 /// * the slope is too steep to represent, approaching infinity
 /// * the number of elements cannot be represented as an `F`
-pub fn linear_regression_tuple<X, Y, F>(xys: &[(X, Y)]) -> Result<(F, F), Error>
+fn linear_regression_tuple<X, Y, F>(xys: &[(X, Y)]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
     F: Float + Debug,
 {
-    if xys.is_empty() {
-        return Err(Error::Mean);
-    }
+    assert_empty!(xys);
+
     // We're handrolling the mean computation here, because our generic implementation can't handle tuples.
     // If we ran the generic impl on each tuple field, that would be very cache inefficient
-    let n = F::from(xys.len()).ok_or(Error::Mean)?;
+    let n = F::from(xys.len()).ok_or(Error::EmptyValError)?;
     let (x_sum, y_sum) = xys
         .iter()
         .cloned()

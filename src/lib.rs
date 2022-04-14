@@ -1,20 +1,12 @@
-#[macro_export]
-macro_rules! assert_delta {
-    ($x:expr, $y:expr, $delta:expr) => {
-        if (f64::abs($x - $y) > $delta) {
-            panic!("{} != {}", $x, $y);
-        }
-    };
-}
+//! This crate implements the Learned SPatial HashMap(LSPH), a high performance
+//! spatial index uses HashMap with learned model.    
+//!
+//! The original paper of LSPH can be found [here].
+//!
+//! [here]:{https://minerva-access.unimelb.edu.au/items/beb5c0ee-2a8d-5bd2-b349-1190a335ef1a}
 
-#[macro_export]
-macro_rules! assert_delta_f32 {
-    ($x:expr, $y:expr, $delta:expr) => {
-        if (f32::abs($x - $y) > $delta) {
-            panic!("{} != {}", $x, $y);
-        }
-    };
-}
+#[macro_use]
+mod macros;
 
 pub use map::*;
 pub mod algorithm;
