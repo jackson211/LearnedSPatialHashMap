@@ -1,5 +1,5 @@
 use crate::{
-    algorithm::{distance::*, nn::*, stats::variance, Model},
+    algorithm::{distance::*, nn::*, Model},
     hasher::*,
     primitives::Point,
 };

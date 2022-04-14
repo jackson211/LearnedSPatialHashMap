@@ -112,10 +112,7 @@ where
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct LinearModel<F>
-where
-    F: Float,
-{
+pub struct LinearModel<F> {
     pub coefficient: F,
     pub intercept: F,
 }
@@ -148,7 +145,6 @@ where
         self.intercept = intercept;
         Ok(())
     }
-
     fn fit_tuple(&mut self, xys: &[(F, F)]) -> Result<(), Error> {
         let (coefficient, intercept): (F, F) = linear_regression_tuple(xys).unwrap();
         self.coefficient = coefficient;

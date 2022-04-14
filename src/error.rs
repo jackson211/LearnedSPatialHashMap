@@ -3,7 +3,6 @@
 pub enum Error {
     /// The slope is too steep to represent, approaching infinity.
     SteepSlopeError,
-    /// Failed to calculate mean.
 
     /// Different input lenses  
     DiffLenError,
