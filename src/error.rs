@@ -2,11 +2,11 @@
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
     /// The slope is too steep to represent, approaching infinity.
-    SteepSlopeError,
+    SteepSlope,
 
     /// Different input lenses  
-    DiffLenError,
+    DiffLen,
 
     /// Input was empty
-    EmptyValError,
+    EmptyVal,
 }

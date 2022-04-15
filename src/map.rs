@@ -1,4 +1,12 @@
-use crate::{distance::*, hasher::*, model::Model, nn::*, primitives::Point};
+use crate::{
+    algorithm::{variance, Model},
+    distance::*,
+    error::*,
+    geometry::Point,
+    hasher::*,
+    nn::*,
+};
+use core::iter::Sum;
 use core::mem;
 use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
@@ -26,7 +34,6 @@ where
     hasher: LearnedHasher<M>,
     table: Vec<Bucket<F>>,
     items: usize,
-    sort_by_x: bool,
 }
 
 impl<M, F> Default for LearnedHashMap<M, F>
@@ -39,7 +46,6 @@ where
             hasher: LearnedHasher::<M>::new(),
             table: Vec::new(),
             items: 0,
-            sort_by_x: true,
         }
     }
 }
@@ -58,7 +64,6 @@ where
             hasher,
             table: Vec::new(),
             items: 0,
-            sort_by_x: true,
         }
     }
 
@@ -67,89 +72,11 @@ where
             hasher: Default::default(),
             table: Vec::with_capacity(capacity),
             items: 0,
-            sort_by_x: true,
         }
-    }
-
-    pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
-        // Resize if the table is empty or 3/4 size of the table is full
-        if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
-            self.resize();
-        }
-
-        // Find where to put the key at second bucket
-        let p_value = match self.sort_by_x {
-            true => p.x,
-            false => p.y,
-        };
-
-        self.insert_with_axis(p_value, p)
-    }
-
-    #[inline]
-    fn insert_with_axis(&mut self, p_value: F, p: Point<F>) -> Option<Point<F>> {
-        let mut insert_index = 0;
-        if self.sort_by_x {
-            // Get index from the hasher
-            let hash = make_hash::<M, F>(&mut self.hasher, &p.x) as usize;
-            let bucket = &mut self.table[hash];
-            for ep in bucket.iter_mut() {
-                if ep == &mut p.clone() {
-                    return Some(mem::replace(ep, p));
-                }
-                if ep.x < p.x {
-                    insert_index += 1;
-                }
-            }
-            bucket.insert(insert_index, p);
-        } else {
-            let hash = make_hash::<M, F>(&mut self.hasher, &p.y) as usize;
-            let bucket = &mut self.table[hash];
-            for ep in bucket.iter_mut() {
-                if ep == &mut p.clone() {
-                    return Some(mem::replace(ep, p));
-                }
-                if ep.y < p_value {
-                    insert_index += 1;
-                }
-            }
-            bucket.insert(insert_index, p);
-        }
-
-        self.items += 1;
-        None
-    }
-
-    pub fn batch_insert(&mut self, ps: &[Point<F>]) {
-        // Allocate table capacity before insert
-        let n = ps.len();
-        self.resize_with_capacity(n * 2);
-        for p in ps.iter() {
-            self.insert(*p);
-        }
-    }
-
-    // fn axis_select(&mut self, ps: &[Point<F>]) {
-    //     let px = ps.iter().map(|&p| p.x).collect();
-    //     let x_variance = variance(&px);
-    // }
-
-    pub fn fit_batch_insert(&mut self, ps: &[Point<F>]) {
-        let data: Vec<(F, F)> = if self.hasher.sort_by_x {
-            ps.iter()
-                .map(|&p| (p.x, F::from_usize(p.id).unwrap()))
-                .collect()
-        } else {
-            ps.iter()
-                .map(|&p| (p.y, F::from_usize(p.id).unwrap()))
-                .collect()
-        };
-        self.hasher.model.fit_tuple(&data).unwrap();
-        self.batch_insert(ps);
     }
 
     pub fn get(&mut self, p: &(F, F)) -> Option<&Point<F>> {
-        let hash = make_hash(&mut self.hasher, &p.0) as usize;
+        let hash = make_hash_point(&mut self.hasher, p) as usize;
         if hash > self.table.capacity() {
             return None;
         }
@@ -169,7 +96,7 @@ where
 
     #[inline]
     pub fn remove(&mut self, p: &(F, F)) -> Option<Point<F>> {
-        let hash = make_hash(&mut self.hasher, &p.0) as usize;
+        let hash = make_hash_point(&mut self.hasher, p) as usize;
         let bucket = &mut self.table[hash];
         let i = bucket.iter().position(|ek| ek.x == p.0 && ek.y == p.1)?;
         self.items -= 1;
@@ -208,18 +135,19 @@ where
 
     /// Range search finds all points for a given 2d range
     /// Returns all the points within the given range
-    ///        
-    //       |                    top right
-    //       |        .-----------*
-    //       |        | .   .     |
-    //       |        |  .  .  .  |
-    //       |        |       .   |
-    //    bottom left *-----------.
-    //       |
-    //       |        |           |
-    //       |________v___________v________
-    //               left       right
-    //               hash       hash
+    /// ```text
+    ///      |                    top right
+    ///      |        .-----------*
+    ///      |        | .   .     |
+    ///      |        |  .  .  .  |
+    ///      |        |       .   |
+    ///   bottom left *-----------.
+    ///      |
+    ///      |        |           |
+    ///      |________v___________v________
+    ///              left       right
+    ///              hash       hash
+    /// ```
     /// #Arguments
     ///
     /// * `bottom_left` - A tuple containing a pair of points that represent the bottom left of the
@@ -265,8 +193,11 @@ where
         heap: &mut BinaryHeap<NearestNeighborState<F>>,
         local_hash: u64,
         query_point: &(F, F),
+        min_d: &mut F,
+        nearest_neighbor: &mut Point<F>,
     ) {
         let bucket = &self.table[local_hash as usize];
+        dbg!(&bucket);
         if !bucket.is_empty() {
             for p in bucket.iter() {
                 let d = Euclidean::distance(query_point, &(p.x, p.y));
@@ -275,6 +206,25 @@ where
                     point: *p,
                 });
             }
+        }
+        match heap.pop() {
+            Some(v) => {
+                let local_min_d = v.distance;
+                // Update the nearest neighbour and minimum distance
+                if &local_min_d < min_d {
+                    *nearest_neighbor = v.point;
+                    *min_d = local_min_d;
+                }
+            }
+            None => (),
+        }
+    }
+
+    fn horizontal_distance(&mut self, query_point: &(F, F), hash: u64) -> F {
+        let x = unhash(&mut self.hasher, hash);
+        match self.hasher.sort_by_x() {
+            true => Euclidean::distance(&(query_point.0, F::zero()), &(x, F::zero())),
+            false => Euclidean::distance(&(query_point.1, F::zero()), &(x, F::zero())),
         }
     }
 
@@ -311,87 +261,180 @@ where
         let mut nearest_neighbor = Point::new();
 
         // Searching at current hash index
-        self.local_min_heap(&mut heap, hash, query_point);
-        match heap.pop() {
-            Some(v) => {
-                let local_min_d = v.distance;
-                // Update the nearest neighbour and minimum distance
-                if local_min_d < min_d {
-                    nearest_neighbor = v.point;
-                    min_d = local_min_d;
-                }
-            }
-            None => (),
-        }
+        self.local_min_heap(
+            &mut heap,
+            hash,
+            query_point,
+            &mut min_d,
+            &mut nearest_neighbor,
+        );
 
-        // Measure left vertical distance from current bucket to left hash bucket
+        dbg!(&nearest_neighbor);
+
+        // Measure left horizontal distance from current bucket to left hash bucket
         // left hash must >= 0
         let mut left_hash = hash.saturating_sub(1);
         // Unhash the left_hash, then calculate the vertical distance between
         // left hash point and query point
-        let mut left_x = unhash(&mut self.hasher, left_hash);
-        let mut left_hash_d =
-            Euclidean::distance(&(query_point.0, F::zero()), &(left_x, F::zero()));
+        let mut left_hash_d = self.horizontal_distance(query_point, left_hash);
 
         // Iterate over left
         while left_hash_d < min_d {
-            self.local_min_heap(&mut heap, left_hash, query_point);
-            match heap.pop() {
-                Some(v) => {
-                    let min_left_d = v.distance;
-                    // Update the nearest neighbour and minimum distance
-                    if min_left_d < min_d {
-                        nearest_neighbor = v.point;
-                        min_d = min_left_d;
-                    }
-                }
-                None => (),
-            }
-            // Move to next left bucket
+            self.local_min_heap(
+                &mut heap,
+                left_hash,
+                query_point,
+                &mut min_d,
+                &mut nearest_neighbor,
+            );
+
+            // break before update
             if left_hash == 0 {
                 break;
             }
-            left_hash = left_hash.saturating_sub(1);
 
             // Update next right side bucket distance
-            left_x = unhash(&mut self.hasher, left_hash);
-            left_hash_d = Euclidean::distance(&(query_point.0, F::zero()), &(left_x, F::zero()));
+            left_hash = left_hash.saturating_sub(1);
+            left_hash_d = self.horizontal_distance(query_point, left_hash);
         }
 
+        dbg!(&nearest_neighbor);
         // Measure right vertical distance from current bucket to right hash bucket
         let mut right_hash = hash + 1;
         // Unhash the right_hash, then calculate the vertical distance between
         // right hash point and query point
-        let mut right_x = unhash(&mut self.hasher, right_hash);
-        let mut right_hash_d =
-            Euclidean::distance(&(query_point.0, F::zero()), &(right_x, F::zero()));
+        let mut right_hash_d = self.horizontal_distance(query_point, right_hash);
 
         // Iterate over right
         while right_hash_d < min_d {
-            self.local_min_heap(&mut heap, right_hash, query_point);
-            match heap.pop() {
-                Some(v) => {
-                    let min_right_d = v.distance;
-                    // Update the nearest neighbour and minimum distance
-                    if min_right_d < min_d {
-                        nearest_neighbor = v.point;
-                        min_d = min_right_d;
-                    }
-                }
-                None => (),
-            }
+            self.local_min_heap(
+                &mut heap,
+                right_hash,
+                query_point,
+                &mut min_d,
+                &mut nearest_neighbor,
+            );
 
             // Move to next right bucket
             right_hash += 1;
+
+            // break after update
             if right_hash == self.table.capacity() as u64 {
                 break;
             }
             // Update next right side bucket distance
-            right_x = unhash(&mut self.hasher, right_hash);
-            right_hash_d = Euclidean::distance(&(query_point.0, F::zero()), &(right_x, F::zero()));
+            right_hash_d = self.horizontal_distance(query_point, right_hash);
         }
+        dbg!(&nearest_neighbor);
 
         Some(nearest_neighbor)
+    }
+}
+
+impl<M, F> LearnedHashMap<M, F>
+where
+    F: Float + Default + AsPrimitive<u64> + FromPrimitive + Debug + Sum,
+    M: Model<F = F> + Default + Clone,
+{
+    pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
+        // Resize if the table is empty or 3/4 size of the table is full
+        if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
+            self.resize();
+        }
+
+        // Find where to put the key at second bucket
+        let p_value = match self.hasher.sort_by_x() {
+            true => p.x,
+            false => p.y,
+        };
+
+        self.insert_with_axis(p_value, p)
+    }
+
+    #[inline]
+    fn insert_with_axis(&mut self, p_value: F, p: Point<F>) -> Option<Point<F>> {
+        let mut insert_index = 0;
+        let hash = make_hash_point::<M, F>(&mut self.hasher, &(p.x, p.y)) as usize;
+        let bucket = &mut self.table[hash];
+        if self.hasher.sort_by_x() {
+            // Get index from the hasher
+            for ep in bucket.iter_mut() {
+                if ep == &mut p.clone() {
+                    return Some(mem::replace(ep, p));
+                }
+                if ep.x < p.x {
+                    insert_index += 1;
+                }
+            }
+        } else {
+            for ep in bucket.iter_mut() {
+                if ep == &mut p.clone() {
+                    return Some(mem::replace(ep, p));
+                }
+                if ep.y < p_value {
+                    insert_index += 1;
+                }
+            }
+        }
+        bucket.insert(insert_index, p);
+        self.items += 1;
+        None
+    }
+
+    pub fn model_fit(&mut self, data: &[(F, F)]) -> Result<(), Error> {
+        self.hasher.model.fit_tuple(data)
+    }
+
+    fn _batch_insert_inner(&mut self, ps: &[Point<F>]) {
+        // Allocate table capacity before insert
+        let n = ps.len();
+        self.resize_with_capacity(n);
+        for p in ps.iter() {
+            self.insert(*p);
+        }
+    }
+
+    pub fn fit_batch_insert(&mut self, ps: &mut [Point<F>]) {
+        // Select suitable axis for training
+        // self.axis_select(ps);
+
+        // Pick out values from one axis
+        let data: Vec<(F, F)> = if self.hasher.sort_by_x() {
+            ps.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
+            ps.iter()
+                .enumerate()
+                .map(|(id, p)| (p.x, F::from_usize(id).unwrap()))
+                .collect()
+
+            // ps.iter()
+            //     .map(|&p| (p.x, F::from_usize(p.id).unwrap()))
+            //     .collect()
+        } else {
+            ps.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+            ps.iter()
+                .enumerate()
+                .map(|(id, p)| (p.y, F::from_usize(id).unwrap()))
+                .collect()
+            //   ps.iter()
+            //       .map(|&p| (p.y, F::from_usize(p.id).unwrap()))
+            //       .collect()
+        };
+        // Fit the data into model
+        self.model_fit(&data).unwrap();
+        // Batch insert into the map
+        self._batch_insert_inner(ps);
+    }
+
+    fn axis_select(&mut self, ps: &[Point<F>]) {
+        let px: Vec<F> = ps.iter().map(|&p| p.x).collect();
+        let x_variance = variance(&px);
+        let py: Vec<F> = ps.iter().map(|&p| p.y).collect();
+        let y_variance = variance(&py);
+        if x_variance > y_variance {
+            self.hasher.set_sort_by_x(true);
+        } else {
+            self.hasher.set_sort_by_x(false);
+        }
     }
 }
 
@@ -499,8 +542,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::LinearModel;
-    use crate::primitives::point::Point;
+    use crate::algorithm::LinearModel;
+    use crate::geometry::Point;
     use crate::test_utilities::*;
 
     #[test]
@@ -552,7 +595,7 @@ mod tests {
 
     #[test]
     fn fit_batch_insert() {
-        let data: Vec<Point<f64>> = vec![
+        let mut data: Vec<Point<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -580,11 +623,11 @@ mod tests {
             },
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        map.fit_batch_insert(&data);
+        map.fit_batch_insert(&mut data);
         dbg!(&map);
 
-        assert_delta!(0.90909, map.hasher.model.coefficient, 0.00001);
-        assert_delta!(0.45455, map.hasher.model.intercept, 0.00001);
+        assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
+        assert_delta!(-0.86363, map.hasher.model.intercept, 0.00001);
         assert_eq!(
             Some(&Point {
                 id: 1,
@@ -618,7 +661,7 @@ mod tests {
 
     #[test]
     fn range_search() {
-        let data: Vec<Point<f64>> = vec![
+        let mut data: Vec<Point<f64>> = vec![
             Point {
                 id: 1,
                 x: 1.,
@@ -646,7 +689,7 @@ mod tests {
             },
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        map.fit_batch_insert(&data);
+        map.fit_batch_insert(&mut data);
         // dbg!(&map);
 
         let found: Vec<Point<f64>> = vec![
@@ -683,7 +726,7 @@ mod tests {
     fn test_nearest_neighbor() {
         let points = create_random_point_type_points(1000, SEED_1);
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        map.fit_batch_insert(&points.clone());
+        map.fit_batch_insert(&mut points.clone());
 
         let sample_points = create_random_point_type_points(100, SEED_2);
         let mut i = 0;

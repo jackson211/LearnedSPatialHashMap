@@ -22,7 +22,7 @@ macro_rules! assert_delta_f32 {
 macro_rules! assert_eq_len {
     ($a:expr, $b:expr) => {
         if $a.len() != $b.len() {
-            return Err(Error::DiffLenError);
+            return Err(Error::DiffLen);
         }
     };
 }
@@ -31,7 +31,7 @@ macro_rules! assert_eq_len {
 macro_rules! assert_empty {
     ($a:expr) => {
         if $a.is_empty() {
-            return Err(Error::EmptyValError);
+            return Err(Error::EmptyVal);
         }
     };
 }

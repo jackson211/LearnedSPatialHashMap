@@ -1,4 +1,4 @@
-use crate::primitives::Point;
+use crate::geometry::Point;
 use num_traits::float::Float;
 use std::marker::PhantomData;
 

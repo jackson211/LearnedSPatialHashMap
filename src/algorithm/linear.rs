@@ -1,6 +1,6 @@
 use crate::{
+    algorithm::{model::*, stats::root_mean_squared_error},
     error::*,
-    model::{model::*, stats::root_mean_squared_error},
 };
 
 use core::iter::Sum;
@@ -43,7 +43,7 @@ where
     });
     let slope = cov_diff_sum / sq_diff_sum;
     if slope.is_nan() {
-        return Err(Error::SteepSlopeError);
+        return Err(Error::SteepSlope);
     }
     let intercept = y_mean - slope * x_mean;
     Ok((slope, intercept))
@@ -74,7 +74,7 @@ where
     assert_empty!(ys);
     assert_eq_len!(xs, ys);
 
-    let n = F::from(xs.len()).ok_or(Error::EmptyValError)?;
+    let n = F::from(xs.len()).ok_or(Error::EmptyVal)?;
 
     // compute the mean of x and y
     let x_sum: F = xs.iter().cloned().map(Into::into).sum();
@@ -114,7 +114,7 @@ where
 
     // We're handrolling the mean computation here, because our generic implementation can't handle tuples.
     // If we ran the generic impl on each tuple field, that would be very cache inefficient
-    let n = F::from(xys.len()).ok_or(Error::EmptyValError)?;
+    let n = F::from(xys.len()).ok_or(Error::EmptyVal)?;
     let (x_sum, y_sum) = xys
         .iter()
         .cloned()
@@ -232,7 +232,7 @@ mod tests {
     fn predict() {
         let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
         let y_values = vec![1f64, 3f64, 2f64, 3f64, 5f64];
-        let mut model: LinearModel<f64> = LinearModel::new();
+        let mut model = LinearModel::new();
         model.fit(&x_values, &y_values).unwrap();
 
         assert_delta!(1.2f64, model.predict(1f64), 0.00001);
@@ -246,7 +246,7 @@ mod tests {
     fn predict_list() {
         let x_values = vec![1f64, 2f64, 3f64, 4f64, 5f64];
         let y_values = vec![1f64, 3f64, 2f64, 3f64, 5f64];
-        let mut model: LinearModel<f64> = LinearModel::new();
+        let mut model = LinearModel::new();
         model.fit(&x_values, &y_values).unwrap();
 
         let predictions = model.batch_predict(&x_values);

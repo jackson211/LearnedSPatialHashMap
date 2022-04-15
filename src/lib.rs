@@ -9,13 +9,13 @@
 mod macros;
 
 pub use map::*;
+pub mod algorithm;
 mod distance;
 mod error;
+pub mod geometry;
 mod hasher;
 pub mod map;
-pub mod model;
 mod nn;
-pub mod primitives;
 
 #[cfg(test)]
-mod test_utilities;
+pub mod test_utilities;

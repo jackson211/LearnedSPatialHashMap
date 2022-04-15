@@ -1,4 +1,4 @@
-use crate::model::Model;
+use crate::algorithm::Model;
 use num_traits::cast::{AsPrimitive, FromPrimitive};
 use num_traits::float::Float;
 
@@ -7,7 +7,7 @@ use num_traits::float::Float;
 pub struct LearnedHasher<M> {
     state: u64,
     pub model: M,
-    pub sort_by_x: bool,
+    sort_by_x: bool,
 }
 
 impl<M, F> Default for LearnedHasher<M>
@@ -23,16 +23,11 @@ where
         }
     }
 }
-
 impl<M, F> LearnedHasher<M>
 where
-    F: Float + FromPrimitive + AsPrimitive<u64>,
-    M: Model<F = F> + Default,
+    F: Float,
+    M: Model<F = F>,
 {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn with_model(model: M) -> Self {
         Self {
             state: 0,
@@ -40,15 +35,44 @@ where
             sort_by_x: true,
         }
     }
-
-    fn write(&mut self, data: &F) {
-        self.state = self.model.predict(*data).floor().as_();
-    }
-
     fn finish(&self) -> u64 {
         self.state
     }
 
+    pub fn sort_by_x(&self) -> bool {
+        self.sort_by_x
+    }
+
+    pub fn set_sort_by_x(&mut self, x: bool) {
+        self.sort_by_x = x;
+    }
+}
+
+impl<M, F> LearnedHasher<M>
+where
+    F: Float,
+    M: Model<F = F> + Default,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<M, F> LearnedHasher<M>
+where
+    F: Float + AsPrimitive<u64>,
+    M: Model<F = F>,
+{
+    fn write(&mut self, data: &F) {
+        self.state = self.model.predict(*data).floor().as_();
+    }
+}
+
+impl<M, F> LearnedHasher<M>
+where
+    F: Float + FromPrimitive,
+    M: Model<F = F> + Default,
+{
     fn unwrite(&mut self, hash: u64) -> F {
         let hash = FromPrimitive::from_u64(hash).unwrap();
         self.model.unpredict(hash)
@@ -88,7 +112,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::LearnedHasher;
-    use crate::model::LinearModel;
+    use crate::algorithm::LinearModel;
 
     #[test]
     fn hasher_with_empty_model() {
@@ -99,11 +123,10 @@ mod tests {
 
     #[test]
     fn unhash() {
-        let mut hasher: LearnedHasher<LinearModel<f64>> =
-            LearnedHasher::with_model(LinearModel {
-                coefficient: 3.,
-                intercept: 2.,
-            });
+        let mut hasher: LearnedHasher<LinearModel<f64>> = LearnedHasher::with_model(LinearModel {
+            coefficient: 3.,
+            intercept: 2.,
+        });
         hasher.write(&10.5);
         assert_eq!(33u64, hasher.finish());
         assert_delta!(10.33f64, hasher.unwrite(33u64), 0.01);

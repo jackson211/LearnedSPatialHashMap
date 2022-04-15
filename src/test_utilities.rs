@@ -1,4 +1,4 @@
-use crate::primitives::*;
+use crate::geometry::*;
 use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 
