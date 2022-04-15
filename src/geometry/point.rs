@@ -1,5 +1,6 @@
 use num_traits::float::Float;
 
+/// Point struct contains two values, and an id
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Point<T> {
     pub id: usize,
