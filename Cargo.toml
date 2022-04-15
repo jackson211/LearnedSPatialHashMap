@@ -10,7 +10,6 @@ readme = "README.md"
 [dependencies]
 num-traits = "0.2.2"
 geohash = { path = "geohash" }
-rayon = "1.5.1"
 smallvec = "1.8.0"
 
 [dev-dependencies]
