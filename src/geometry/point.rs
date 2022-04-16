@@ -28,4 +28,12 @@ where
     pub fn new(id: usize, x: T, y: T) -> Self {
         Point { id, x, y }
     }
+
+    pub fn x(&self) -> T {
+        self.x
+    }
+
+    pub fn y(&self) -> T {
+        self.y
+    }
 }

@@ -26,7 +26,7 @@ fn bulk_load_baseline(c: &mut Criterion) {
 
 fn locate_successful(c: &mut Criterion) {
     let mut points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
-    let query_point = create_random_points(100_000, SEED_1)[500];
+    let query_point = (points[500].x(), points[500].y());
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     map.fit_batch_insert(&mut points);
@@ -37,10 +37,10 @@ fn locate_successful(c: &mut Criterion) {
 
 fn locate_unsuccessful(c: &mut Criterion) {
     let mut points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
+    let query_point = (0.7, 0.7);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     map.fit_batch_insert(&mut points);
-    let query_point = (0.7, 0.7);
     c.bench_function("locate_at_point (unsuccessful)", move |b| {
         b.iter(|| map.get(&query_point).is_none())
     });
@@ -49,11 +49,11 @@ fn locate_unsuccessful(c: &mut Criterion) {
 fn nearest_neighbor(c: &mut Criterion) {
     const SIZE: usize = 100_000;
     let mut points: Vec<_> = create_random_point_type_points(SIZE, SEED_1);
+    let query_points = create_random_points(100, SEED_2);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     map.fit_batch_insert(&mut points);
 
-    let query_points = create_random_points(100, SEED_2);
     c.bench_function("nearest_neigbor", move |b| {
         b.iter(|| {
             for query_point in &query_points {
@@ -63,11 +63,31 @@ fn nearest_neighbor(c: &mut Criterion) {
     });
 }
 
+fn radius_range(c: &mut Criterion) {
+    const SIZE: usize = 100_000;
+    let mut points: Vec<_> = create_random_point_type_points(SIZE, SEED_1);
+    let query_point = (points[500].x(), points[500].y());
+
+    let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+    map.fit_batch_insert(&mut points);
+
+    let radiuses = vec![0.01, 0.1, 0.2];
+    for radius in radiuses {
+        let title = format!("radius_range_{radius}");
+        c.bench_function(title.as_str(), |b| {
+            b.iter(|| {
+                map.radius_range(&query_point, radius).unwrap();
+            });
+        });
+    }
+}
+
 criterion_group!(
     benches,
     bulk_load_baseline,
     locate_successful,
     locate_unsuccessful,
+    radius_range,
     nearest_neighbor,
 );
 criterion_main!(benches);

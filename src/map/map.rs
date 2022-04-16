@@ -18,7 +18,7 @@ use std::fmt::Debug;
 const INITIAL_NBUCKETS: usize = 1;
 
 /// Default Bucket array for HashMap
-// type Bucket<T> = SmallVec<[Point<T>; 6]>;
+// type DefaultHasher = LinearHasher;
 
 /// LearnedHashMap takes a model instead of an hasher for hashing indexes in the table
 ///
@@ -129,7 +129,7 @@ where
             new_table[hash].push(p);
         }
 
-        mem::replace(&mut self.table, new_table);
+        self.table = new_table;
     }
 
     /// Range search finds all points for a given 2d range
@@ -159,15 +159,14 @@ where
         bottom_left: &(F, F),
         top_right: &(F, F),
     ) -> Option<Vec<Point<F>>> {
-        let right_hash = make_hash_point(&mut self.hasher, top_right) as usize;
+        let mut right_hash = make_hash_point(&mut self.hasher, top_right) as usize;
         if right_hash > self.table.capacity() {
-            return None;
+            right_hash = self.table.capacity() as usize - 1;
         }
-        let left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
+        let mut left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
             return None;
         }
-
         let mut result: Vec<Point<F>> = Vec::new();
         for i in left_hash..=right_hash {
             let bucket = &self.table[i];
@@ -185,6 +184,13 @@ where
             return None;
         }
         Some(result)
+    }
+
+    pub fn radius_range(&mut self, query_point: &(F, F), radius: F) -> Option<Vec<Point<F>>> {
+        self.range_search(
+            &(query_point.0 - radius, query_point.1 - radius),
+            &(query_point.0 + radius, query_point.1 + radius),
+        )
     }
 
     fn local_min_heap(
