@@ -1,6 +1,6 @@
 use crate::{
-    algorithm::{model::*, stats::root_mean_squared_error},
     error::*,
+    models::{model::*, stats::root_mean_squared_error},
 };
 
 use core::iter::Sum;
@@ -11,7 +11,7 @@ use std::fmt::Debug;
 ///
 /// Calculates the simple linear regression from array of tuples, and their means.
 ///
-/// #Arguments
+/// # Arguments
 ///
 /// * `xys` -  An array of tuples of training data that contains Xs and Ys.
 ///
@@ -53,6 +53,12 @@ where
 ///
 /// Calculates the linear regression from two slices, one for x- and one for y-values, by
 /// calculating the mean and then calling `lin_reg`.
+///
+/// # Arguments
+///
+/// * `xs` -  An array of tuples of training data.
+///
+/// * `ys` -  An array of tuples of targeting data.
 ///
 /// Returns `Ok(slope, intercept)` of the regression line.
 ///
@@ -132,6 +138,7 @@ where
     )
 }
 
+/// Linear regression model
 #[derive(Copy, Clone, Debug, Default)]
 pub struct LinearModel<F> {
     pub coefficient: F,

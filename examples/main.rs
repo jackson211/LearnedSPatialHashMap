@@ -1,4 +1,4 @@
-use lsph::{algorithm::LinearModel, geometry::Point, LearnedHashMap};
+use lsph::{geometry::Point, models::LinearModel, LearnedHashMap};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
@@ -23,7 +23,7 @@ pub fn load_data(filepath: &str) -> Result<Vec<Point<f64>>, Error> {
     Ok(data
         .into_iter()
         .enumerate()
-        .map(|(id, (x, y))| Point { id, x, y })
+        .map(|(id, (x, y))| Point::new(id, x, y))
         .collect::<Vec<_>>())
 }
 

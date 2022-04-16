@@ -2,8 +2,8 @@
 extern crate criterion;
 
 use criterion::Criterion;
-use lsph::geometry::point::Point;
-use lsph::{algorithm::LinearModel, map::LearnedHashMap};
+use lsph::geometry::Point;
+use lsph::{map::LearnedHashMap, models::LinearModel};
 use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 
@@ -14,31 +14,32 @@ const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
 
 fn bulk_load_baseline(c: &mut Criterion) {
     c.bench_function("Bulk load baseline", move |b| {
-        let points: Vec<_> = create_random_point_type_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
+        let mut points: Vec<_> =
+            create_random_point_type_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
 
         b.iter(|| {
-            map.fit_batch_insert(&points);
+            map.fit_batch_insert(&mut points);
         });
     });
 }
 
 fn locate_successful(c: &mut Criterion) {
-    let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
+    let mut points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
     let query_point = create_random_points(100_000, SEED_1)[500];
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&points);
+    map.fit_batch_insert(&mut points);
     c.bench_function("locate_at_point (successful)", move |b| {
         b.iter(|| map.get(&query_point).is_some())
     });
 }
 
 fn locate_unsuccessful(c: &mut Criterion) {
-    let points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
+    let mut points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&points);
+    map.fit_batch_insert(&mut points);
     let query_point = (0.7, 0.7);
     c.bench_function("locate_at_point (unsuccessful)", move |b| {
         b.iter(|| map.get(&query_point).is_none())
@@ -47,10 +48,10 @@ fn locate_unsuccessful(c: &mut Criterion) {
 
 fn nearest_neighbor(c: &mut Criterion) {
     const SIZE: usize = 100_000;
-    let points: Vec<_> = create_random_point_type_points(SIZE, SEED_1);
+    let mut points: Vec<_> = create_random_point_type_points(SIZE, SEED_1);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&points);
+    map.fit_batch_insert(&mut points);
 
     let query_points = create_random_points(100, SEED_2);
     c.bench_function("nearest_neigbor", move |b| {
@@ -81,12 +82,12 @@ fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<(f64, f64)> {
 }
 
 fn create_random_point_type_points(num_points: usize, seed: &[u8; 32]) -> Vec<Point<f64>> {
-    let mut result = create_random_points(num_points, seed);
+    let result = create_random_points(num_points, seed);
 
-    result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    // result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     result
         .into_iter()
         .enumerate()
-        .map(|(id, (x, y))| Point { id, x, y })
+        .map(|(id, (x, y))| Point::new(id, x, y))
         .collect::<Vec<_>>()
 }

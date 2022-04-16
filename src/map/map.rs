@@ -1,10 +1,9 @@
 use crate::{
-    algorithm::{variance, Model},
-    distance::*,
     error::*,
     geometry::Point,
     hasher::*,
-    nn::*,
+    map::{distance::*, nn::*, table::*},
+    models::{variance, Model},
 };
 use core::iter::Sum;
 use core::mem;
@@ -19,32 +18,28 @@ use std::fmt::Debug;
 const INITIAL_NBUCKETS: usize = 1;
 
 /// Default Bucket array for HashMap
-type Bucket<T> = SmallVec<[Point<T>; 6]>;
+// type Bucket<T> = SmallVec<[Point<T>; 6]>;
 
 /// LearnedHashMap takes a model instead of an hasher for hashing indexes in the table
 ///
 /// Default Model for the LearndedHashMap is Linear regression
 /// In order to build a ordered HashMap, we need to make sure that the model is monotonic
 #[derive(Debug, Clone)]
-pub struct LearnedHashMap<M, F>
-where
-    F: Float,
-    M: Model<F = F> + Default + Clone,
-{
+pub struct LearnedHashMap<M, F> {
     hasher: LearnedHasher<M>,
-    table: Vec<Bucket<F>>,
+    table: Table<Point<F>>,
     items: usize,
 }
 
 impl<M, F> Default for LearnedHashMap<M, F>
 where
-    F: Float + Default + AsPrimitive<u64> + FromPrimitive,
-    M: Model<F = F> + Default + Clone,
+    F: Float,
+    M: Model<F = F> + Default,
 {
     fn default() -> Self {
         Self {
             hasher: LearnedHasher::<M>::new(),
-            table: Vec::new(),
+            table: Table::new(),
             items: 0,
         }
     }
@@ -62,7 +57,7 @@ where
     pub fn with_hasher(hasher: LearnedHasher<M>) -> Self {
         Self {
             hasher,
-            table: Vec::new(),
+            table: Table::new(),
             items: 0,
         }
     }
@@ -70,7 +65,7 @@ where
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             hasher: Default::default(),
-            table: Vec::with_capacity(capacity),
+            table: Table::with_capacity(capacity),
             items: 0,
         }
     }
@@ -95,16 +90,19 @@ where
     }
 
     #[inline]
-    pub fn remove(&mut self, p: &(F, F)) -> Option<Point<F>> {
-        let hash = make_hash_point(&mut self.hasher, p) as usize;
-        let bucket = &mut self.table[hash];
-        let i = bucket.iter().position(|ek| ek.x == p.0 && ek.y == p.1)?;
+    pub fn remove(&mut self, p: &Point<F>) -> Option<Point<F>> {
+        let hash = make_hash_point(&mut self.hasher, &(p.x, p.y));
         self.items -= 1;
-        Some(bucket.swap_remove(i))
+        self.table.remove_entry(hash, *p)
     }
 
     #[inline]
     pub fn len(&self) -> usize {
+        self.table.len()
+    }
+
+    #[inline]
+    pub fn items(&self) -> usize {
         self.items
     }
 
@@ -123,14 +121,15 @@ where
 
     #[inline(never)]
     fn resize_with_capacity(&mut self, target_size: usize) {
-        let mut new_table = Vec::with_capacity(target_size);
-        new_table.extend((0..target_size).map(|_| SmallVec::new()));
+        let mut new_table = Table::with_capacity(target_size);
+        new_table.extend((0..target_size).map(|_| Bucket::new()));
 
         for p in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
-            let hash = make_hash(&mut self.hasher, &p.x) as usize;
+            let hash = make_hash_point(&mut self.hasher, &(p.x, p.y)) as usize;
             new_table[hash].push(p);
         }
-        self.table = new_table;
+
+        mem::replace(&mut self.table, new_table);
     }
 
     /// Range search finds all points for a given 2d range
@@ -148,7 +147,7 @@ where
     ///              left       right
     ///              hash       hash
     /// ```
-    /// #Arguments
+    /// # Arguments
     ///
     /// * `bottom_left` - A tuple containing a pair of points that represent the bottom left of the
     /// range.
@@ -197,7 +196,6 @@ where
         nearest_neighbor: &mut Point<F>,
     ) {
         let bucket = &self.table[local_hash as usize];
-        dbg!(&bucket);
         if !bucket.is_empty() {
             for p in bucket.iter() {
                 let d = Euclidean::distance(query_point, &(p.x, p.y));
@@ -243,7 +241,7 @@ where
     ///                    query
     ///                    point
     ///```
-    /// #Arguments
+    /// # Arguments
     ///
     /// * `query_point` - A tuple containing a pair of points for querying
     ///
@@ -258,7 +256,7 @@ where
 
         let mut heap = BinaryHeap::new();
         let mut min_d = F::max_value();
-        let mut nearest_neighbor = Point::new();
+        let mut nearest_neighbor = Point::default();
 
         // Searching at current hash index
         self.local_min_heap(
@@ -268,8 +266,6 @@ where
             &mut min_d,
             &mut nearest_neighbor,
         );
-
-        dbg!(&nearest_neighbor);
 
         // Measure left horizontal distance from current bucket to left hash bucket
         // left hash must >= 0
@@ -298,7 +294,6 @@ where
             left_hash_d = self.horizontal_distance(query_point, left_hash);
         }
 
-        dbg!(&nearest_neighbor);
         // Measure right vertical distance from current bucket to right hash bucket
         let mut right_hash = hash + 1;
         // Unhash the right_hash, then calculate the vertical distance between
@@ -325,7 +320,6 @@ where
             // Update next right side bucket distance
             right_hash_d = self.horizontal_distance(query_point, right_hash);
         }
-        dbg!(&nearest_neighbor);
 
         Some(nearest_neighbor)
     }
@@ -333,12 +327,12 @@ where
 
 impl<M, F> LearnedHashMap<M, F>
 where
-    F: Float + Default + AsPrimitive<u64> + FromPrimitive + Debug + Sum,
+    F: Float + AsPrimitive<u64> + FromPrimitive + Default + Debug + Sum,
     M: Model<F = F> + Default + Clone,
 {
     pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
         // Resize if the table is empty or 3/4 size of the table is full
-        if self.table.is_empty() || self.items > 3 * self.table.len() / 4 {
+        if self.table.is_empty() || self.items() > 3 * self.table.len() / 4 {
             self.resize();
         }
 
@@ -396,7 +390,7 @@ where
 
     pub fn fit_batch_insert(&mut self, ps: &mut [Point<F>]) {
         // Select suitable axis for training
-        // self.axis_select(ps);
+        self.axis_select(ps);
 
         // Pick out values from one axis
         let data: Vec<(F, F)> = if self.hasher.sort_by_x() {
@@ -542,8 +536,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithm::LinearModel;
     use crate::geometry::Point;
+    use crate::models::LinearModel;
     use crate::test_utilities::*;
 
     #[test]
@@ -564,7 +558,7 @@ mod tests {
         map.insert(a);
         map.insert(b);
 
-        assert_eq!(map.items, 2);
+        assert_eq!(map.items(), 2);
         assert_eq!(map.get(&(0., 1.)).unwrap(), &a);
         assert_eq!(map.get(&(1., 0.)).unwrap(), &b);
     }
@@ -585,11 +579,11 @@ mod tests {
         };
 
         let res = map.insert(a);
-        assert_eq!(map.items, 1);
+        assert_eq!(map.items(), 1);
         assert_eq!(res, None);
 
         let res = map.insert(b);
-        assert_eq!(map.items, 2);
+        assert_eq!(map.items(), 2);
         assert_eq!(res, None);
     }
 

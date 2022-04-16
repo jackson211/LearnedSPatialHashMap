@@ -1,7 +1,7 @@
 use crate::{
-    algorithm::{variance, Model},
     error::Error,
     geometry::{helper::*, Axis, Point},
+    models::{variance, Model},
 };
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, Float};
@@ -114,7 +114,7 @@ where
     /// Preprocess with Vec<Point<F>> that satisfy Trainer's requirements
     ///
     /// Returns prepared Trainer Ok((Trainer)) on success, otherwise returns an error
-    pub fn with_point(ps: &mut [Point<F>]) -> Result<Self, Error> {
+    pub fn with_points(ps: &mut [Point<F>]) -> Result<Self, Error> {
         let px: Vec<F> = extract_x(ps);
         let py: Vec<F> = extract_y(ps);
         assert_eq_len!(px, py);
@@ -206,5 +206,42 @@ mod tests {
         sort_by_x(&mut data);
 
         assert_eq!(data_sort_by_x, data);
+    }
+
+    #[test]
+    fn train() {
+        let mut data: Vec<Point<f64>> = vec![
+            Point {
+                id: 1,
+                x: 1.,
+                y: 1.,
+            },
+            Point {
+                id: 2,
+                x: 3.,
+                y: 1.,
+            },
+            Point {
+                id: 3,
+                x: 2.,
+                y: 1.,
+            },
+            Point {
+                id: 4,
+                x: 3.,
+                y: 2.,
+            },
+            Point {
+                id: 5,
+                x: 5.,
+                y: 1.,
+            },
+        ];
+        let trainer = Trainer::with_points(&mut data).unwrap();
+        let test_x = vec![1., 3., 2., 3., 5.];
+        let test_y = vec![0., 1., 2., 3., 4.];
+
+        assert_eq!(&test_x, trainer.train_x());
+        assert_eq!(&test_y, trainer.train_y());
     }
 }

@@ -1,4 +1,4 @@
-use crate::algorithm::Model;
+use crate::models::Model;
 use num_traits::cast::{AsPrimitive, FromPrimitive};
 use num_traits::float::Float;
 
@@ -112,7 +112,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::LearnedHasher;
-    use crate::algorithm::LinearModel;
+    use crate::models::LinearModel;
 
     #[test]
     fn hasher_with_empty_model() {

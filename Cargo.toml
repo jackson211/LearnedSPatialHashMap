@@ -6,9 +6,11 @@ edition = "2021"
 description = "Learned Spatial HashMap"
 license = "MIT"
 readme = "README.md"
+keywords = ["hash", "hashmap"]
+categories = ["data-structures"]
 
 [dependencies]
-num-traits = "0.2.2"
+num-traits = "0.2.14"
 geohash = { path = "geohash" }
 smallvec = "1.8.0"
 
