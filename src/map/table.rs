@@ -1,8 +1,5 @@
-use core::mem;
-use core::ops::{Deref, DerefMut, Index, IndexMut};
+use core::ops::{Deref, DerefMut};
 use smallvec::SmallVec;
-
-const INITIAL_NBUCKETS: usize = 1;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Bucket<V> {
@@ -82,18 +79,5 @@ impl<V> Deref for Table<V> {
 impl<V> DerefMut for Table<V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.buckets
-    }
-}
-
-impl<V> Index<usize> for Table<V> {
-    type Output = Bucket<V>;
-    fn index(&self, idx: usize) -> &Self::Output {
-        &self.buckets[idx]
-    }
-}
-
-impl<V> IndexMut<usize> for Table<V> {
-    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
-        &mut self.buckets[idx]
     }
 }

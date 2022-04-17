@@ -66,7 +66,7 @@ fn nearest_neighbor(c: &mut Criterion) {
 fn radius_range(c: &mut Criterion) {
     const SIZE: usize = 100_000;
     let mut points: Vec<_> = create_random_point_type_points(SIZE, SEED_1);
-    let query_point = (points[500].x(), points[500].y());
+    let query_points = create_random_points(100, SEED_2);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     map.fit_batch_insert(&mut points);
@@ -76,7 +76,9 @@ fn radius_range(c: &mut Criterion) {
         let title = format!("radius_range_{radius}");
         c.bench_function(title.as_str(), |b| {
             b.iter(|| {
-                map.radius_range(&query_point, radius).unwrap();
+                for query_point in &query_points {
+                    map.radius_range(&query_point, radius).unwrap();
+                }
             });
         });
     }

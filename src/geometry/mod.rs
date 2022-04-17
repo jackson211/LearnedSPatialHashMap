@@ -1,4 +1,5 @@
 mod axis;
+pub mod distance;
 pub mod helper;
 mod point;
 

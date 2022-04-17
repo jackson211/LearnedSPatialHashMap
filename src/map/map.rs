@@ -1,8 +1,8 @@
 use crate::{
     error::*,
-    geometry::Point,
+    geometry::{distance::*, Point},
     hasher::*,
-    map::{distance::*, nn::*, table::*},
+    map::{nn::*, table::*},
     models::{variance, Model},
 };
 use core::iter::Sum;
@@ -11,7 +11,6 @@ use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
     float::Float,
 };
-use smallvec::SmallVec;
 use std::collections::BinaryHeap;
 use std::fmt::Debug;
 
@@ -163,7 +162,7 @@ where
         if right_hash > self.table.capacity() {
             right_hash = self.table.capacity() as usize - 1;
         }
-        let mut left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
+        let left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
             return None;
         }
