@@ -1,4 +1,4 @@
-use lsph::{geometry::Point, models::LinearModel, LearnedHashMap};
+use lsph::{LearnedHashMap, LinearModel, Point, Trainer};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
@@ -28,5 +28,7 @@ pub fn load_data(filepath: &str) -> Result<Vec<Point<f64>>, Error> {
 }
 
 fn main() {
-    let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+    let filepath = "./melbourne.csv";
+    // let Ok(data) = load_data(filepath);
+    // let mut map = LearnedHashMap::batch_insert(data);
 }

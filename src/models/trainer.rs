@@ -41,6 +41,10 @@ where
         &self.train_y
     }
 
+    pub fn axis(&self) -> &Axis {
+        &self.axis
+    }
+
     pub fn set_train_x(&mut self, xs: Vec<F>) {
         self.train_x = xs
     }
@@ -56,9 +60,9 @@ where
     /// Training with provided model
     ///
     /// Returns trained/fitted model on success, otherwise returns an error
-    pub fn train<'a, M: Model<F = F> + 'a>(&self, model: &'a mut M) -> Result<&'a M, Error> {
+    pub fn train<'a, M: Model<F = F> + 'a>(&self, model: &'a mut M) -> Result<(), Error> {
         model.fit(&self.train_x, &self.train_y)?;
-        Ok(model)
+        Ok(())
     }
 }
 
@@ -96,18 +100,19 @@ where
         if variance(&xs) > variance(&ys) {
             // sort along x
             sort_by_x(&mut ps);
-            reset_id(&mut ps);
             self.set_axis(Axis::X);
             self.set_train_x(extract_x(&ps));
         } else {
             // sort along y
             sort_by_y(&mut ps);
-            reset_id(&mut ps);
             self.set_axis(Axis::Y);
             self.set_train_x(extract_y(&ps));
         };
 
-        self.set_train_y(extract_id(&ps));
+        // reset_id(&mut ps);
+        // extract_id(&ps)
+        let train_y: Vec<F> = (0..ps.len()).map(|x| F::from_usize(x).unwrap()).collect();
+        self.set_train_y(train_y);
         Ok(ps)
     }
 
@@ -121,19 +126,17 @@ where
         let x_variance = variance(&px);
         let y_variance = variance(&py);
         // set train_x to data with larger variance
-        let (axis, train_x, train_y) = if x_variance > y_variance {
+        let (axis, train_x) = if x_variance > y_variance {
             // sort along x
             sort_by_x(ps);
-            reset_id(ps);
-            let id: Vec<F> = extract_id(ps);
-            (Axis::X, px, id)
+            (Axis::X, px)
         } else {
             // sort along y
             sort_by_y(ps);
-            reset_id(ps);
-            let id: Vec<F> = extract_id(ps);
-            (Axis::Y, py, id)
+            (Axis::Y, py)
         };
+        // reset_id(ps);
+        let train_y: Vec<F> = (0..ps.len()).map(|x| F::from_usize(x).unwrap()).collect();
 
         Ok(Self {
             train_x,

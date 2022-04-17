@@ -3,7 +3,7 @@ use crate::{
     geometry::{distance::*, Point},
     hasher::*,
     map::{nn::*, table::*},
-    models::{variance, Model},
+    models::Model,
 };
 use core::iter::Sum;
 use core::mem;
@@ -393,47 +393,40 @@ where
         }
     }
 
-    pub fn fit_batch_insert(&mut self, ps: &mut [Point<F>]) {
+    pub fn batch_insert(&mut self, ps: &mut [Point<F>]) -> Result<(), Error> {
         // Select suitable axis for training
-        self.axis_select(ps);
+        use crate::geometry::Axis;
+        use crate::models::Trainer;
 
-        // Pick out values from one axis
-        let data: Vec<(F, F)> = if self.hasher.sort_by_x() {
-            ps.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
-            ps.iter()
-                .enumerate()
-                .map(|(id, p)| (p.x, F::from_usize(id).unwrap()))
-                .collect()
+        // Loading data into trainer
+        if let Ok(trainer) = Trainer::with_points(ps) {
+            trainer.train(&mut self.hasher.model).unwrap();
+            let axis = trainer.axis();
+            match axis {
+                Axis::X => self.hasher.set_sort_by_x(true),
+                _ => self.hasher.set_sort_by_x(false),
+            };
 
-            // ps.iter()
-            //     .map(|&p| (p.x, F::from_usize(p.id).unwrap()))
-            //     .collect()
-        } else {
-            ps.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
-            ps.iter()
-                .enumerate()
-                .map(|(id, p)| (p.y, F::from_usize(id).unwrap()))
-                .collect()
-            //   ps.iter()
-            //       .map(|&p| (p.y, F::from_usize(p.id).unwrap()))
-            //       .collect()
-        };
-        // Fit the data into model
-        self.model_fit(&data).unwrap();
-        // Batch insert into the map
-        self._batch_insert_inner(ps);
-    }
-
-    fn axis_select(&mut self, ps: &[Point<F>]) {
-        let px: Vec<F> = ps.iter().map(|&p| p.x).collect();
-        let x_variance = variance(&px);
-        let py: Vec<F> = ps.iter().map(|&p| p.y).collect();
-        let y_variance = variance(&py);
-        if x_variance > y_variance {
-            self.hasher.set_sort_by_x(true);
-        } else {
-            self.hasher.set_sort_by_x(false);
+            // Pick out values from one axis
+            let data: Vec<(F, F)> = if self.hasher.sort_by_x() {
+                ps.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
+                ps.iter()
+                    .enumerate()
+                    .map(|(id, p)| (p.x, F::from_usize(id).unwrap()))
+                    .collect()
+            } else {
+                ps.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
+                ps.iter()
+                    .enumerate()
+                    .map(|(id, p)| (p.y, F::from_usize(id).unwrap()))
+                    .collect()
+            };
+            // Fit the data into model
+            self.model_fit(&data).unwrap();
+            // Batch insert into the map
+            self._batch_insert_inner(ps);
         }
+        Ok(())
     }
 }
 
@@ -622,7 +615,7 @@ mod tests {
             },
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        map.fit_batch_insert(&mut data);
+        map.batch_insert(&mut data).unwrap();
         dbg!(&map);
 
         assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
@@ -688,7 +681,7 @@ mod tests {
             },
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        map.fit_batch_insert(&mut data);
+        map.batch_insert(&mut data).unwrap();
         // dbg!(&map);
 
         let found: Vec<Point<f64>> = vec![
@@ -725,7 +718,7 @@ mod tests {
     fn test_nearest_neighbor() {
         let points = create_random_point_type_points(1000, SEED_1);
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        map.fit_batch_insert(&mut points.clone());
+        map.batch_insert(&mut points.clone()).unwrap();
 
         let sample_points = create_random_point_type_points(100, SEED_2);
         let mut i = 0;

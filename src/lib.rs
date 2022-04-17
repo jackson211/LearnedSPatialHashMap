@@ -30,4 +30,7 @@ pub mod models;
 #[cfg(test)]
 pub mod test_utilities;
 
+pub use geometry::*;
+pub use hasher::*;
 pub use map::*;
+pub use models::*;

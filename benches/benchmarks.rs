@@ -19,7 +19,7 @@ fn bulk_load_baseline(c: &mut Criterion) {
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
 
         b.iter(|| {
-            map.fit_batch_insert(&mut points);
+            map.batch_insert(&mut points).unwrap();
         });
     });
 }
@@ -29,7 +29,7 @@ fn locate_successful(c: &mut Criterion) {
     let query_point = (points[500].x(), points[500].y());
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&mut points);
+    map.batch_insert(&mut points).unwrap();
     c.bench_function("locate_at_point (successful)", move |b| {
         b.iter(|| map.get(&query_point).is_some())
     });
@@ -40,7 +40,7 @@ fn locate_unsuccessful(c: &mut Criterion) {
     let query_point = (0.7, 0.7);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&mut points);
+    map.batch_insert(&mut points).unwrap();
     c.bench_function("locate_at_point (unsuccessful)", move |b| {
         b.iter(|| map.get(&query_point).is_none())
     });
@@ -52,7 +52,7 @@ fn nearest_neighbor(c: &mut Criterion) {
     let query_points = create_random_points(100, SEED_2);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&mut points);
+    map.batch_insert(&mut points).unwrap();
 
     c.bench_function("nearest_neigbor", move |b| {
         b.iter(|| {
@@ -69,7 +69,7 @@ fn radius_range(c: &mut Criterion) {
     let query_points = create_random_points(100, SEED_2);
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    map.fit_batch_insert(&mut points);
+    map.batch_insert(&mut points).unwrap();
 
     let radiuses = vec![0.01, 0.1, 0.2];
     for radius in radiuses {
