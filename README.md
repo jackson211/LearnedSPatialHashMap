@@ -17,6 +17,41 @@ The LSPH supports:
 - Radius Range Query
 - Nearest Neighbor Query
 
+Example:
+```
+use lsph::{LearnedHashMap, LinearModel, Point};
+let mut data: Vec<Point<f64>> = vec![
+    Point {
+        id: 1,
+        x: 1.,
+        y: 1.,
+    },
+    Point {
+        id: 2,
+        x: 3.,
+        y: 1.,
+    },
+    Point {
+        id: 3,
+        x: 2.,
+        y: 1.,
+    },
+    Point {
+        id: 4,
+        x: 3.,
+        y: 2.,
+    },
+    Point {
+        id: 5,
+        x: 5.,
+        y: 1.,
+    },
+];
+let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+map.batch_insert(&mut data).unwrap();
+
+```
+
 # License
 
 Licensed under either of
