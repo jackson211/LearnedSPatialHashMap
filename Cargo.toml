@@ -1,12 +1,12 @@
 [package]
 name = "lsph"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Haozhan Shi <jackson21182@gmail.com>"]
 edition = "2021"
 description = "Learned Spatial HashMap"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-keywords = ["hash", "hashmap"]
+keywords = ["hash", "hashmap", "spatial", "index"]
 categories = ["data-structures"]
 
 [dependencies]
