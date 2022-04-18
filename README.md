@@ -1,6 +1,8 @@
 # LSPH - Learned SPatial HashMap
 
 ![Github Workflow](https://github.com/jackson211/lsph/actions/workflows/rust.yml/badge.svg)
+![crates.io version](https://img.shields.io/crates/v/lsph)
+![dos.io](https://img.shields.io/docsrs/lsph)
 
 The original paper of LSPH can be found [here].
 
@@ -21,31 +23,11 @@ Example:
 ```
 use lsph::{LearnedHashMap, LinearModel, Point};
 let mut data: Vec<Point<f64>> = vec![
-    Point {
-        id: 1,
-        x: 1.,
-        y: 1.,
-    },
-    Point {
-        id: 2,
-        x: 3.,
-        y: 1.,
-    },
-    Point {
-        id: 3,
-        x: 2.,
-        y: 1.,
-    },
-    Point {
-        id: 4,
-        x: 3.,
-        y: 2.,
-    },
-    Point {
-        id: 5,
-        x: 5.,
-        y: 1.,
-    },
+    Point::new(1, 1., 1.),
+    Point::new(2, 3., 1.),
+    Point::new(3, 2., 1.),
+    Point::new(4, 3., 2.),
+    Point::new(5, 5., 1.),
 ];
 let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
 map.batch_insert(&mut data).unwrap();
