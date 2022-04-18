@@ -1,6 +1,6 @@
 use num_traits::float::Float;
 
-/// Point struct contains two values, and an id
+/// Point struct contains id, x and y
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Point<T> {
     pub(crate) id: usize,

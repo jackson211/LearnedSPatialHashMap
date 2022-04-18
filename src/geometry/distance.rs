@@ -2,12 +2,16 @@ use crate::geometry::Point;
 use num_traits::float::Float;
 use std::marker::PhantomData;
 
+/// Distance trait for measuring the distance between two points
 pub trait Distance {
     type F;
+    /// Distance between two points in tuple format
     fn distance(a: &(Self::F, Self::F), b: &(Self::F, Self::F)) -> Self::F;
+    /// Distance between two points in points format
     fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F;
 }
 
+/// Euclidean Distance
 pub struct Euclidean<F: Float> {
     _marker: PhantomData<F>,
 }
@@ -26,6 +30,7 @@ where
     }
 }
 
+/// Manhattan Distance
 pub struct Manhattan<F: Float> {
     _marker: PhantomData<F>,
 }

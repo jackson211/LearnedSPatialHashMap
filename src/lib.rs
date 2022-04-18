@@ -26,7 +26,6 @@ pub mod geometry;
 pub mod hasher;
 pub mod map;
 pub mod models;
-// pub mod spatial_map;
 #[cfg(test)]
 pub mod test_utilities;
 

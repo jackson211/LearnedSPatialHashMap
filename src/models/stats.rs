@@ -1,6 +1,7 @@
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, float::Float};
 
+/// Calculates mean of a slice of values
 pub fn mean<F>(values: &[F]) -> F
 where
     F: Float + Sum,
@@ -12,6 +13,7 @@ where
     sum / F::from(values.len()).unwrap()
 }
 
+/// Calculates variance of a slice of values
 pub fn variance<F>(values: &[F]) -> F
 where
     F: Float + Sum,
@@ -29,6 +31,7 @@ where
     diff_sum / F::from(values.len()).unwrap()
 }
 
+/// Calculates covariance over two slices of values
 pub fn covariance<F>(x_values: &[F], y_values: &[F]) -> F
 where
     F: Float + Sum,
@@ -52,6 +55,7 @@ where
         / F::from(length).unwrap()
 }
 
+/// Calculates mean squared error between actual and predict values
 pub fn mean_squared_error<F>(actual: &[F], predict: &[F]) -> F
 where
     F: Float + FromPrimitive,
@@ -69,6 +73,7 @@ where
         / F::from_usize(actual.len()).unwrap()
 }
 
+/// Calculates root mean squared error between actual and predict values
 pub fn root_mean_squared_error<F>(actual: &[F], predict: &[F]) -> F
 where
     F: Float + FromPrimitive,

@@ -1,4 +1,4 @@
-use lsph::{LearnedHashMap, LinearModel, Point, Trainer};
+use lsph::{LearnedHashMap, LinearModel, Point};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
@@ -15,11 +15,10 @@ pub fn load_data(filepath: &str) -> Result<Vec<Point<f64>>, Error> {
         let tokens: Vec<&str> = line_string.split(",").collect();
         let lat = tokens[0].parse::<f64>().unwrap();
         let lng = tokens[1].parse::<f64>().unwrap();
-        let key = tokens[2].parse::<f64>().unwrap();
+        let _key = tokens[2].parse::<f64>().unwrap();
         data.push((lat, lng));
     }
 
-    data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     Ok(data
         .into_iter()
         .enumerate()
@@ -28,7 +27,8 @@ pub fn load_data(filepath: &str) -> Result<Vec<Point<f64>>, Error> {
 }
 
 fn main() {
-    let filepath = "./melbourne.csv";
-    // let Ok(data) = load_data(filepath);
-    // let mut map = LearnedHashMap::batch_insert(data);
+    if let Ok(mut data) = load_data("./examples/melbourne.csv") {
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+        map.batch_insert(&mut data).unwrap();
+    };
 }

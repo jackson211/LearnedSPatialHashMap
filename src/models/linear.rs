@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    models::{model::*, stats::root_mean_squared_error},
+    models::{stats::root_mean_squared_error, Model},
 };
 
 use core::iter::Sum;
