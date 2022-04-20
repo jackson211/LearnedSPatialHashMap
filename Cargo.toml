@@ -4,6 +4,7 @@ version = "0.1.4"
 authors = ["Haozhan Shi <jackson21182@gmail.com>"]
 repository = "https://github.com/jackson211/lsph"
 homepage = "https://github.com/jackson211/lsph"
+documentation = "https://docs.rs/lsph"
 edition = "2021"
 description = "Learned Spatial HashMap"
 license = "MIT OR Apache-2.0"
