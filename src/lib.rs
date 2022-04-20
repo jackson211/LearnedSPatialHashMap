@@ -21,24 +21,17 @@
 //!
 //! Example:
 //! ```
-//! use lsph::{LearnedHashMap, LinearModel, Point};
-//! let mut data: Vec<Point<f64>> = vec![
-//!     Point::new(1, 1., 1.),
-//!     Point::new(2, 3., 1.),
-//!     Point::new(3, 2., 1.),
-//!     Point::new(4, 3., 2.),
-//!     Point::new(5, 5., 1.),
-//! ];
-//! let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-//! map.batch_insert(&mut data).unwrap();
+//! use lsph::{LearnedHashMap, LinearModel};
+//! let data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
+//! let map = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&data);
 //!
 //! ```
 //! # License
 //!
 //! Licensed under either of
 //!
-//! - Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-//! - MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+//! - Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+//! - MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 //!
 //! at your option.
 

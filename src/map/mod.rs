@@ -55,8 +55,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// // You can have rust code between fences inside the comments
-    /// // If you pass --test to `rustdoc`, it will even test it for you!
     /// use lsph::{LearnedHashMap, LinearModel};
     /// let map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     /// ```
@@ -72,8 +70,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// // You can have rust code between fences inside the comments
-    /// // If you pass --test to `rustdoc`, it will even test it for you!
     /// use lsph::{LearnedHashMap, LinearModel, LearnedHasher};
     /// let map = LearnedHashMap::<LinearModel<f64>, f64>::with_hasher(LearnedHasher::new());
     /// ```
@@ -93,8 +89,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// // You can have rust code between fences inside the comments
-    /// // If you pass --test to `rustdoc`, it will even test it for you!
     /// use lsph::{LearnedHashMap, LinearModel, LearnedHasher};
     /// let map = LearnedHashMap::<LinearModel<f64>, f64>::with_capacity(10usize);
     /// ```
@@ -372,6 +366,28 @@ where
     F: Float + AsPrimitive<u64> + FromPrimitive + Default + Debug + Sum,
     M: Model<F = F> + Default + Clone,
 {
+    /// Returns a default LearnedHashMap with Model and Float type
+    ///
+    /// # Arguments
+    /// * `data` - A Vec<[F; 2]> of 2d points for the map
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lsph::{LearnedHashMap, LinearModel};
+    /// let data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
+    /// let map = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&data);
+    /// ```
+    pub fn with_data(data: &Vec<[F; 2]>) -> Result<(Self, Vec<Point<F>>), Error> {
+        use crate::helper::convert_to_points;
+        let mut map = LearnedHashMap::with_capacity(data.len());
+        let mut ps = convert_to_points(data).unwrap();
+        match map.batch_insert(&mut ps) {
+            Ok(()) => Ok((map, ps)),
+            Err(err) => Err(err),
+        }
+    }
+
     pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
         // Resize if the table is empty or 3/4 size of the table is full
         if self.table.is_empty() || self.items() > 3 * self.table.len() / 4 {

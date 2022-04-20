@@ -1,5 +1,7 @@
 # LSPH - Learned SPatial HashMap
 
+fast 2d point query empowered by hashmap and statisic model
+
 ![Github Workflow](https://github.com/jackson211/lsph/actions/workflows/rust.yml/badge.svg)
 ![crates.io version](https://img.shields.io/crates/v/lsph)
 ![dos.io](https://img.shields.io/docsrs/lsph)
@@ -20,7 +22,8 @@ The LSPH supports:
 - Nearest Neighbor Query
 
 Example:
-```
+
+```rust
 use lsph::{LearnedHashMap, LinearModel, Point};
 let mut data: Vec<Point<f64>> = vec![
     Point::new(1, 1., 1.),

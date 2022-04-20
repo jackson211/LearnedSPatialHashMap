@@ -30,3 +30,8 @@ pub fn sort_by_y<F: Float>(ps: &mut [Point<F>]) {
 pub fn reset_id<F: Float>(ps: &mut [Point<F>]) {
     ps.iter_mut().enumerate().for_each(|(i, p)| p.id = i);
 }
+
+///
+pub fn convert_to_points<F: Float>(ps: &Vec<[F; 2]>) -> Option<Vec<Point<F>>> {
+    Some(ps.iter().map(|p| Point::new(0, p[0], p[1])).collect())
+}
