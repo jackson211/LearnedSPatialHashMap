@@ -1,5 +1,3 @@
-mod linear_hasher;
-
 use crate::models::Model;
 use num_traits::cast::{AsPrimitive, FromPrimitive};
 use num_traits::float::Float;
