@@ -1,5 +1,4 @@
-//! This crate implements the Learned SPatial HashMap(LSPH), a high performance
-//! spatial index uses HashMap with learned model.    
+//! This crate implements the Learned SPatial HashMap(LSPH), a high performance spatial index uses HashMap with learned model.    
 //!
 //! The original paper of LSPH can be found [here].
 //!
