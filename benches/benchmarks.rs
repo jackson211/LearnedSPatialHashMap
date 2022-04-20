@@ -26,7 +26,7 @@ fn bulk_load_baseline(c: &mut Criterion) {
 
 fn locate_successful(c: &mut Criterion) {
     let mut points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
-    let query_point = (points[500].x(), points[500].y());
+    let query_point = [points[500].x(), points[500].y()];
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     map.batch_insert(&mut points).unwrap();
@@ -37,7 +37,7 @@ fn locate_successful(c: &mut Criterion) {
 
 fn locate_unsuccessful(c: &mut Criterion) {
     let mut points: Vec<_> = create_random_point_type_points(100_000, SEED_1);
-    let query_point = (0.7, 0.7);
+    let query_point = [0.7, 0.7];
 
     let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     map.batch_insert(&mut points).unwrap();
@@ -94,11 +94,11 @@ criterion_group!(
 );
 criterion_main!(benches);
 
-fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<(f64, f64)> {
+fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<[f64; 2]> {
     let mut result = Vec::with_capacity(num_points);
     let mut rng = Hc128Rng::from_seed(*seed);
     for _ in 0..num_points {
-        result.push((rng.gen(), rng.gen()));
+        result.push([rng.gen(), rng.gen()]);
     }
     result
 }
@@ -110,6 +110,6 @@ fn create_random_point_type_points(num_points: usize, seed: &[u8; 32]) -> Vec<Po
     result
         .into_iter()
         .enumerate()
-        .map(|(id, (x, y))| Point::new(id, x, y))
+        .map(|(id, [x, y])| Point::new(id, x, y))
         .collect::<Vec<_>>()
 }

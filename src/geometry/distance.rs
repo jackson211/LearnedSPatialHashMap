@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 pub trait Distance {
     type F;
     /// Distance between two points in tuple format
-    fn distance(a: &(Self::F, Self::F), b: &(Self::F, Self::F)) -> Self::F;
+    fn distance(a: &[Self::F; 2], b: &[Self::F; 2]) -> Self::F;
     /// Distance between two points in points format
     fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F;
 }
@@ -21,12 +21,12 @@ where
     F: Float,
 {
     type F = F;
-    fn distance(a: &(F, F), b: &(F, F)) -> F {
-        F::sqrt((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2))
+    fn distance(a: &[F; 2], b: &[F; 2]) -> F {
+        F::sqrt((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2))
     }
 
     fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F {
-        Self::distance(&(a.x, a.y), &(b.x, b.y))
+        Self::distance(&[a.x, a.y], &[b.x, b.y])
     }
 }
 
@@ -40,12 +40,12 @@ where
     F: Float,
 {
     type F = F;
-    fn distance(a: &(F, F), b: &(F, F)) -> F {
-        (a.0 - b.0).abs() + (a.1 - b.1).abs()
+    fn distance(a: &[F; 2], b: &[F; 2]) -> F {
+        (a[0] - b[0]).abs() + (a[1] - b[1]).abs()
     }
 
     fn distance_point(a: &Point<Self::F>, b: &Point<Self::F>) -> Self::F {
-        Self::distance(&(a.x, a.y), &(b.x, b.y))
+        Self::distance(&[a.x, a.y], &[b.x, b.y])
     }
 }
 
