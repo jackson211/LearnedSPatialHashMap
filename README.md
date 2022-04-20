@@ -1,6 +1,6 @@
 # LSPH - Learned SPatial HashMap
 
-fast 2d point query empowered by hashmap and statistic model
+fast 2d point query powered by hashmap and statistic model
 
 ![Github Workflow](https://github.com/jackson211/lsph/actions/workflows/rust.yml/badge.svg)
 ![crates.io version](https://img.shields.io/crates/v/lsph)
