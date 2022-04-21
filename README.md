@@ -12,7 +12,7 @@ The original paper of LSPH can be found [here].
 
 The LSPH uses a learned model such as a linear regression model as the hash function to predict the index in a hashmap. As a result, the learned model is more fitted to the data that stored in the hashmap, and reduces the
 chance of hashing collisions. Moreover, if the learned model is monotonic function(e.g. linear regression), the hash indexes are increasing as the input data increases. This property can be used to create a sorted order
-of buckets in a hashmap, which allow us to do range searchs in a hashmap.
+of buckets in a hashmap, which allow us to do range searches in a hashmap.
 
 The LSPH supports:
 

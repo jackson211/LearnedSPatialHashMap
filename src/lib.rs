@@ -10,7 +10,7 @@
 //! chance of hashing collisions. Moreover, if the learned model is monotonic
 //! function(e.g. linear regression), the hash indexes are increasing as the
 //! input data increases. This property can be used to create a sorted order
-//! of buckets in a hashmap, which allow us to do range searchs in a hashmap.
+//! of buckets in a hashmap, which allow us to do range searches in a hashmap.
 //!
 //! The LSPH supports:
 //! - Point Query
