@@ -535,7 +535,6 @@ where
     /// use lsph::{LearnedHashMap, LinearModel, LearnedHasher};
     /// let point_data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
     /// let (mut map, points) = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&point_data).unwrap();
-    ///
     /// assert_eq!(map.range_search(&[0., 0.], &[3., 3.]).is_some(), true);
     /// ```
     #[inline]
@@ -622,6 +621,14 @@ where
     ///
     /// * `query_point` - A tuple containing a pair of points for querying
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lsph::{LearnedHashMap, LinearModel, LearnedHasher};
+    /// let point_data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
+    /// let (mut map, points) = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&point_data).unwrap();
+    /// assert_eq!(map.nearest_neighbor(&[2., 1.]).is_some(), true);
+    /// ```
     #[inline]
     pub fn nearest_neighbor(&mut self, query_point: &[F; 2]) -> Option<Point<F>> {
         let mut hash = make_hash_point(&mut self.hasher, query_point);
