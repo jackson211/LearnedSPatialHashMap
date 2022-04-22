@@ -132,8 +132,7 @@ fn create_random_point_type_points(num_points: usize, seed: &[u8; 32]) -> Vec<Po
     // result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     result
         .into_iter()
-        .enumerate()
-        .map(|(id, [x, y])| Point::new(id, x, y))
+        .map(|[x, y]| Point::new(x, y))
         .collect::<Vec<_>>()
 }
 
@@ -143,7 +142,6 @@ fn create_random_point_type_points_f32(num_points: usize, seed: &[u8; 32]) -> Ve
     // result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     result
         .into_iter()
-        .enumerate()
-        .map(|(id, [x, y])| Point::new(id, x as f32, y as f32))
+        .map(|[x, y]| Point::new(x as f32, y as f32))
         .collect::<Vec<_>>()
 }

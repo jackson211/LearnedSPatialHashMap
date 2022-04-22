@@ -535,8 +535,8 @@ where
     ///
     /// ```
     /// use lsph::{LearnedHashMap, LinearModel, Point};
-    /// let a: Point<f64> = Point::new(1, 0., 1.);
-    /// let b: Point<f64> = Point::new(2, 1., 0.);
+    /// let a: Point<f64> = Point::new(0., 1.);
+    /// let b: Point<f64> = Point::new(1., 0.);
 
     /// let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
     /// map.insert(a);
@@ -783,8 +783,8 @@ mod tests {
 
     #[test]
     fn insert() {
-        let a: Point<f64> = Point::new(1, 0., 1.);
-        let b: Point<f64> = Point::new(2, 1., 0.);
+        let a: Point<f64> = Point::new(0., 1.);
+        let b: Point<f64> = Point::new(1., 0.);
 
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.insert(a);
@@ -798,8 +798,8 @@ mod tests {
     #[test]
     fn insert_repeated() {
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-        let a: Point<f64> = Point::new(1, 0., 1.);
-        let b: Point<f64> = Point::new(2, 1., 0.);
+        let a: Point<f64> = Point::new(0., 1.);
+        let b: Point<f64> = Point::new(1., 0.);
         let res = map.insert(a);
         assert_eq!(map.items(), 1);
         assert_eq!(res, None);
@@ -819,11 +819,11 @@ mod tests {
     #[test]
     fn fit_batch_insert() {
         let mut data: Vec<Point<f64>> = vec![
-            Point::new(1, 1., 1.),
-            Point::new(2, 3., 1.),
-            Point::new(3, 2., 1.),
-            Point::new(4, 3., 2.),
-            Point::new(5, 5., 1.),
+            Point::new(1., 1.),
+            Point::new(3., 1.),
+            Point::new(2., 1.),
+            Point::new(3., 2.),
+            Point::new(5., 1.),
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.batch_insert(&mut data).unwrap();
@@ -831,9 +831,9 @@ mod tests {
 
         assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
         assert_delta!(-0.86363, map.hasher.model.intercept, 0.00001);
-        assert_eq!(Some(&Point::new(1, 1., 1.)), map.get(&[1., 1.]));
-        assert_eq!(Some(&Point::new(2, 3., 1.,)), map.get(&[3., 1.]));
-        assert_eq!(Some(&Point::new(5, 5., 1.)), map.get(&[5., 1.]));
+        assert_eq!(Some(&Point::new(1., 1.)), map.get(&[1., 1.]));
+        assert_eq!(Some(&Point::new(3., 1.,)), map.get(&[3., 1.]));
+        assert_eq!(Some(&Point::new(5., 1.)), map.get(&[5., 1.]));
 
         assert_eq!(None, map.get(&[5., 2.]));
         assert_eq!(None, map.get(&[2., 2.]));
@@ -844,11 +844,11 @@ mod tests {
     #[test]
     fn insert_batch_insert() {
         let mut data: Vec<Point<f64>> = vec![
-            Point::new(1, 1., 1.),
-            Point::new(2, 3., 1.),
-            Point::new(3, 2., 1.),
-            Point::new(4, 3., 2.),
-            Point::new(5, 5., 1.),
+            Point::new(1., 1.),
+            Point::new(3., 1.),
+            Point::new(2., 1.),
+            Point::new(3., 2.),
+            Point::new(5., 1.),
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.batch_insert(&mut data).unwrap();
@@ -856,9 +856,9 @@ mod tests {
 
         assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
         assert_delta!(-0.86363, map.hasher.model.intercept, 0.00001);
-        assert_eq!(Some(&Point::new(1, 1., 1.)), map.get(&[1., 1.]));
-        assert_eq!(Some(&Point::new(2, 3., 1.,)), map.get(&[3., 1.]));
-        assert_eq!(Some(&Point::new(5, 5., 1.)), map.get(&[5., 1.]));
+        assert_eq!(Some(&Point::new(1., 1.)), map.get(&[1., 1.]));
+        assert_eq!(Some(&Point::new(3., 1.,)), map.get(&[3., 1.]));
+        assert_eq!(Some(&Point::new(5., 1.)), map.get(&[5., 1.]));
 
         assert_eq!(None, map.get(&[5., 2.]));
         assert_eq!(None, map.get(&[2., 2.]));
@@ -869,25 +869,22 @@ mod tests {
     #[test]
     fn range_search() {
         let mut data: Vec<Point<f64>> = vec![
-            Point::new(1, 1., 1.),
-            Point::new(2, 2., 2.),
-            Point::new(3, 3., 3.),
-            Point::new(4, 4., 4.),
-            Point::new(5, 5., 5.),
+            Point::new(1., 1.),
+            Point::new(2., 2.),
+            Point::new(3., 3.),
+            Point::new(4., 4.),
+            Point::new(5., 5.),
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.batch_insert(&mut data).unwrap();
         // dbg!(&map);
 
-        let found: Vec<Point<f64>> = vec![
-            Point::new(1, 1., 1.),
-            Point::new(2, 2., 2.),
-            Point::new(3, 3., 3.),
-        ];
+        let found: Vec<Point<f64>> =
+            vec![Point::new(1., 1.), Point::new(2., 2.), Point::new(3., 3.)];
 
         assert_eq!(Some(found), map.range_search(&[1., 1.], &[3.5, 3.]));
 
-        let found: Vec<Point<f64>> = vec![Point::new(1, 1., 1.)];
+        let found: Vec<Point<f64>> = vec![Point::new(1., 1.)];
 
         assert_eq!(Some(found), map.range_search(&[1., 1.], &[3., 1.]));
         assert_eq!(None, map.range_search(&[4., 2.], &[5., 3.]));

@@ -21,8 +21,7 @@ pub fn load_data(filepath: &str) -> Result<Vec<Point<f64>>, Error> {
 
     Ok(data
         .into_iter()
-        .enumerate()
-        .map(|(id, (x, y))| Point::new(id, x, y))
+        .map(|(x, y)| Point::new(x, y))
         .collect::<Vec<_>>())
 }
 

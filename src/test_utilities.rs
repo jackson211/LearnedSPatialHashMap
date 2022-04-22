@@ -22,7 +22,6 @@ pub fn create_random_point_type_points(num_points: usize, seed: &[u8; 32]) -> Ve
     // result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     result
         .into_iter()
-        .enumerate()
-        .map(|(id, (x, y))| Point { id, x, y })
+        .map(|(x, y)| Point { x, y })
         .collect::<Vec<_>>()
 }

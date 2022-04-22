@@ -92,8 +92,7 @@ where
         let mut ps: Vec<Point<F>> = xs
             .iter()
             .zip(ys.iter())
-            .enumerate()
-            .map(|(id, (&x, &y))| Point { id, x, y })
+            .map(|(&x, &y)| Point { x, y })
             .collect();
 
         // set train_x to data with larger variance
@@ -147,58 +146,18 @@ mod tests {
     #[test]
     fn sort_by() {
         let mut data: Vec<Point<f64>> = vec![
-            Point {
-                id: 1,
-                x: 1.,
-                y: 1.,
-            },
-            Point {
-                id: 2,
-                x: 3.,
-                y: 1.,
-            },
-            Point {
-                id: 3,
-                x: 2.,
-                y: 1.,
-            },
-            Point {
-                id: 4,
-                x: 3.,
-                y: 2.,
-            },
-            Point {
-                id: 5,
-                x: 5.,
-                y: 1.,
-            },
+            Point { x: 1., y: 1. },
+            Point { x: 3., y: 1. },
+            Point { x: 2., y: 1. },
+            Point { x: 3., y: 2. },
+            Point { x: 5., y: 1. },
         ];
         let data_sort_by_x: Vec<Point<f64>> = vec![
-            Point {
-                id: 1,
-                x: 1.,
-                y: 1.,
-            },
-            Point {
-                id: 3,
-                x: 2.,
-                y: 1.,
-            },
-            Point {
-                id: 2,
-                x: 3.,
-                y: 1.,
-            },
-            Point {
-                id: 4,
-                x: 3.,
-                y: 2.,
-            },
-            Point {
-                id: 5,
-                x: 5.,
-                y: 1.,
-            },
+            Point { x: 1., y: 1. },
+            Point { x: 2., y: 1. },
+            Point { x: 3., y: 1. },
+            Point { x: 3., y: 2. },
+            Point { x: 5., y: 1. },
         ];
         sort_by_x(&mut data);
 
@@ -208,31 +167,11 @@ mod tests {
     #[test]
     fn train() {
         let mut data: Vec<Point<f64>> = vec![
-            Point {
-                id: 1,
-                x: 1.,
-                y: 1.,
-            },
-            Point {
-                id: 2,
-                x: 3.,
-                y: 1.,
-            },
-            Point {
-                id: 3,
-                x: 2.,
-                y: 1.,
-            },
-            Point {
-                id: 4,
-                x: 3.,
-                y: 2.,
-            },
-            Point {
-                id: 5,
-                x: 5.,
-                y: 1.,
-            },
+            Point { x: 1., y: 1. },
+            Point { x: 3., y: 1. },
+            Point { x: 2., y: 1. },
+            Point { x: 3., y: 2. },
+            Point { x: 5., y: 1. },
         ];
         let trainer = Trainer::with_points(&mut data).unwrap();
         let test_x = vec![1., 2., 3., 3., 5.];
