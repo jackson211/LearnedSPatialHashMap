@@ -109,9 +109,7 @@ where
             self.set_train_x(extract_y(&ps));
         };
 
-        // reset_id(&mut ps);
-        // extract_id(&ps)
-        let train_y: Vec<F> = (0..ps.len()).map(|x| F::from_usize(x).unwrap()).collect();
+        let train_y: Vec<F> = (0..ps.len()).map(|id| F::from_usize(id).unwrap()).collect();
         self.set_train_y(train_y);
         Ok(ps)
     }
@@ -127,17 +125,13 @@ where
         let y_variance = variance(&py);
         // set train_x to data with larger variance
         let (axis, train_x) = if x_variance > y_variance {
-            // sort along x
             sort_by_x(ps);
-            (Axis::X, px)
+            (Axis::X, extract_x(&ps))
         } else {
-            // sort along y
             sort_by_y(ps);
-            (Axis::Y, py)
+            (Axis::Y, extract_y(&ps))
         };
-        // reset_id(ps);
-        let train_y: Vec<F> = (0..ps.len()).map(|x| F::from_usize(x).unwrap()).collect();
-
+        let train_y: Vec<F> = (0..ps.len()).map(|id| F::from_usize(id).unwrap()).collect();
         Ok(Self {
             train_x,
             train_y,
@@ -241,7 +235,7 @@ mod tests {
             },
         ];
         let trainer = Trainer::with_points(&mut data).unwrap();
-        let test_x = vec![1., 3., 2., 3., 5.];
+        let test_x = vec![1., 2., 3., 3., 5.];
         let test_y = vec![0., 1., 2., 3., 4.];
 
         assert_eq!(&test_x, trainer.train_x());

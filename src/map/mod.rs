@@ -559,7 +559,12 @@ where
             false => p.y,
         };
 
-        self.insert_with_axis(p_value, p)
+        let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
+        if hash > self.table.capacity() as u64 {
+            self.resize_with_capacity(hash as usize * 2);
+        }
+
+        self.insert_with_axis(p_value, p, hash)
     }
 
     /// Insert a point into the map along the given axis.
@@ -567,10 +572,10 @@ where
     /// # Arguments
     /// * `p_value` - A float number represent the key of a 2d point
     #[inline]
-    fn insert_with_axis(&mut self, p_value: F, p: Point<F>) -> Option<Point<F>> {
+    fn insert_with_axis(&mut self, p_value: F, p: Point<F>, hash: u64) -> Option<Point<F>> {
         let mut insert_index = 0;
-        let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]) as usize;
-        let bucket = &mut self.table[hash];
+        let bucket_index = self.table.bucket(hash);
+        let bucket = &mut self.table[bucket_index];
         if self.hasher.sort_by_x() {
             // Get index from the hasher
             for ep in bucket.iter_mut() {
@@ -600,9 +605,21 @@ where
     /// model fitting.
     ///
     /// # Arguments
+    ///
+    /// * `xs` - A list of tuple of floating number
+    /// * `ys` - A list of tuple of floating number
+    #[inline]
+    pub fn model_fit(&mut self, xs: &[F], ys: &[F]) -> Result<(), Error> {
+        self.hasher.model.fit(xs, ys)
+    }
+
+    /// Fit the input data into the model of the hasher. Returns Error if error occurred during
+    /// model fitting.
+    ///
+    /// # Arguments
     /// * `data` - A list of tuple of floating number
     #[inline]
-    pub fn model_fit(&mut self, data: &[(F, F)]) -> Result<(), Error> {
+    pub fn model_fit_tuple(&mut self, data: &[(F, F)]) -> Result<(), Error> {
         self.hasher.model.fit_tuple(data)
     }
 
@@ -646,22 +663,9 @@ where
                 _ => self.hasher.set_sort_by_x(false),
             };
 
-            // Pick out values from one axis
-            let data: Vec<(F, F)> = if self.hasher.sort_by_x() {
-                ps.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
-                ps.iter()
-                    .enumerate()
-                    .map(|(id, p)| (p.x, F::from_usize(id).unwrap()))
-                    .collect()
-            } else {
-                ps.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
-                ps.iter()
-                    .enumerate()
-                    .map(|(id, p)| (p.y, F::from_usize(id).unwrap()))
-                    .collect()
-            };
             // Fit the data into model
-            self.model_fit(&data).unwrap();
+            self.model_fit(&trainer.train_x(), &trainer.train_y())
+                .unwrap();
             // Batch insert into the map
             self._batch_insert_inner(ps);
         }
@@ -814,6 +818,31 @@ mod tests {
 
     #[test]
     fn fit_batch_insert() {
+        let mut data: Vec<Point<f64>> = vec![
+            Point::new(1, 1., 1.),
+            Point::new(2, 3., 1.),
+            Point::new(3, 2., 1.),
+            Point::new(4, 3., 2.),
+            Point::new(5, 5., 1.),
+        ];
+        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+        map.batch_insert(&mut data).unwrap();
+        dbg!(&map);
+
+        assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
+        assert_delta!(-0.86363, map.hasher.model.intercept, 0.00001);
+        assert_eq!(Some(&Point::new(1, 1., 1.)), map.get(&[1., 1.]));
+        assert_eq!(Some(&Point::new(2, 3., 1.,)), map.get(&[3., 1.]));
+        assert_eq!(Some(&Point::new(5, 5., 1.)), map.get(&[5., 1.]));
+
+        assert_eq!(None, map.get(&[5., 2.]));
+        assert_eq!(None, map.get(&[2., 2.]));
+        assert_eq!(None, map.get(&[50., 10.]));
+        assert_eq!(None, map.get(&[500., 100.]));
+    }
+
+    #[test]
+    fn insert_batch_insert() {
         let mut data: Vec<Point<f64>> = vec![
             Point::new(1, 1., 1.),
             Point::new(2, 3., 1.),

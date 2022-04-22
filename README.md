@@ -1,4 +1,4 @@
-# LSPH - Learned SPatial HashMap
+# [LSPH](https://crates.io/crates/lsph) - Learned SPatial HashMap
 
 fast 2d point query powered by hashmap and statistic model
 
@@ -21,9 +21,9 @@ The LSPH supports:
 - Radius Range Query
 - Nearest Neighbor Query
 
-
 Example:
-``` rust
+
+```rust
 use lsph::{LearnedHashMap, LinearModel};
 let point_data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
 let (mut map, points) = LearnedHashMap::<LinearModel<f32>, f64>::with_data(&point_data).unwrap();
@@ -36,7 +36,8 @@ assert_eq!(map.nearest_neighbor(&[2., 1.]).is_some(), true);
 ```
 
 To Run Benchmark:
-``` bash
+
+```bash
 cargo bench
 ```
 
