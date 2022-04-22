@@ -287,7 +287,6 @@ where
     }
 
     /// Rehash the map.
-    #[allow(dead_code)]
     #[inline]
     fn rehash(&mut self) -> Result<(), Error> {
         let mut old_data = Vec::with_capacity(self.items());
@@ -348,12 +347,20 @@ where
         };
 
         let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
-        // resize if hash index is larger than table capacity
-        if hash > self.table.capacity() as u64 {
+        // resize if hash index is larger or equal to the table capacity
+        if hash >= self.table.capacity() as u64 {
             self.resize_with_capacity(hash as usize * 2);
+            self.insert_with_axis(p_value, p, hash);
+            match self.rehash() {
+                Ok(_) => None,
+                Err(err) => {
+                    eprintln!("{:?}", err);
+                    None
+                }
+            }
+        } else {
+            self.insert_with_axis(p_value, p, hash)
         }
-
-        self.insert_with_axis(p_value, p, hash)
     }
 
     /// Insert a point into the map along the given axis.
@@ -865,7 +872,7 @@ mod tests {
     }
 
     #[test]
-    fn insert_batch_insert() {
+    fn insert_after_batch_insert() {
         let mut data: Vec<Point<f64>> = vec![
             Point::new(1., 1.),
             Point::new(3., 1.),
@@ -877,16 +884,14 @@ mod tests {
         map.batch_insert(&mut data).unwrap();
         dbg!(&map);
 
-        assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
-        assert_delta!(-0.86363, map.hasher.model.intercept, 0.00001);
-        assert_eq!(Some(&Point::new(1., 1.)), map.get(&[1., 1.]));
-        assert_eq!(Some(&Point::new(3., 1.,)), map.get(&[3., 1.]));
-        assert_eq!(Some(&Point::new(5., 1.)), map.get(&[5., 1.]));
+        let a: Point<f64> = Point::new(10., 10.);
+        map.insert(a.clone());
+        assert_eq!(Some(&a), map.get(&[10., 10.]));
 
-        assert_eq!(None, map.get(&[5., 2.]));
-        assert_eq!(None, map.get(&[2., 2.]));
-        assert_eq!(None, map.get(&[50., 10.]));
-        assert_eq!(None, map.get(&[500., 100.]));
+        let b: Point<f64> = Point::new(100., 100.);
+        map.insert(b.clone());
+        assert_eq!(Some(&b), map.get(&[100., 100.]));
+        assert_eq!(None, map.get(&[100., 101.]));
     }
 
     #[test]
