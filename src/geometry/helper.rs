@@ -22,6 +22,6 @@ pub fn sort_by_y<F: Float>(ps: &mut [Point<F>]) {
 }
 
 /// Convert a Vec of [F; 2] to a Vec<Point<F>>
-pub fn convert_to_points<F: Float>(ps: &Vec<[F; 2]>) -> Option<Vec<Point<F>>> {
+pub fn convert_to_points<F: Float>(ps: &[[F; 2]]) -> Option<Vec<Point<F>>> {
     Some(ps.iter().map(|p| Point::new(p[0], p[1])).collect())
 }

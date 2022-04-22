@@ -48,7 +48,7 @@ where
 
 impl<M, F> LearnedHashMap<M, F>
 where
-    F: Float + Default + AsPrimitive<u64> + FromPrimitive + Debug,
+    F: Float + Default + AsPrimitive<u64> + FromPrimitive + Debug + Sum,
     M: Model<F = F> + Default + Clone,
 {
     /// Returns a default LearnedHashMap with Model and Float type.
@@ -101,6 +101,29 @@ where
             hasher: Default::default(),
             table: Table::with_capacity(capacity),
             items: 0,
+        }
+    }
+
+    /// Returns a default LearnedHashMap with Model and Float type
+    ///
+    /// # Arguments
+    /// * `data` - A Vec<[F; 2]> of 2d points for the map
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lsph::{LearnedHashMap, LinearModel};
+    /// let data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
+    /// let map = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&data);
+    /// ```
+    #[inline]
+    pub fn with_data(data: &[[F; 2]]) -> Result<(Self, Vec<Point<F>>), Error> {
+        use crate::helper::convert_to_points;
+        let mut map = LearnedHashMap::with_capacity(data.len());
+        let mut ps = convert_to_points(data).unwrap();
+        match map.batch_insert(&mut ps) {
+            Ok(()) => Ok((map, ps)),
+            Err(err) => Err(err),
         }
     }
 
@@ -250,7 +273,7 @@ where
     }
 
     /// Resize the map if needed, it will resize the map to desired capacity.
-    #[inline(never)]
+    #[inline]
     fn resize_with_capacity(&mut self, target_size: usize) {
         let mut new_table = Table::with_capacity(target_size);
         new_table.extend((0..target_size).map(|_| Bucket::new()));
@@ -261,6 +284,181 @@ where
         }
 
         self.table = new_table;
+    }
+
+    /// Rehash the map.
+    #[allow(dead_code)]
+    #[inline]
+    fn rehash(&mut self) -> Result<(), Error> {
+        let mut old_data = Vec::with_capacity(self.items());
+        for p in self.table.iter_mut().flat_map(|bucket| bucket.drain(..)) {
+            old_data.push(p);
+        }
+        self.batch_insert(&mut old_data)
+    }
+
+    /// Inner function for insert a single point into the map
+    #[inline]
+    fn insert_inner(&mut self, p: Point<F>) -> Option<Point<F>> {
+        // Resize if the table is empty or 3/4 size of the table is full
+        if self.table.is_empty() || self.items() > 3 * self.table.len() / 4 {
+            self.resize();
+        }
+
+        // Find where to put the key at second bucket
+        let p_value = match self.hasher.sort_by_x() {
+            true => p.x,
+            false => p.y,
+        };
+
+        let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
+        self.insert_with_axis(p_value, p, hash)
+    }
+
+    /// Sequencial insert a point into the map.
+    ///
+    /// # Arguments
+    /// * `p` - A Point<F> with float number
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lsph::{LearnedHashMap, LinearModel, Point};
+    /// let a: Point<f64> = Point::new(0., 1.);
+    /// let b: Point<f64> = Point::new(1., 0.);
+
+    /// let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
+    /// map.insert(a);
+    /// map.insert(b);
+
+    /// assert_eq!(map.items(), 2);
+    /// assert_eq!(map.get(&[0., 1.]).unwrap(), &a);
+    /// assert_eq!(map.get(&[1., 0.]).unwrap(), &b);
+    /// ```
+    pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
+        // Resize if the table is empty or 3/4 size of the table is full
+        if self.table.is_empty() || self.items() > 3 * self.table.len() / 4 {
+            self.resize();
+        }
+
+        // Find where to put the key at second bucket
+        let p_value = match self.hasher.sort_by_x() {
+            true => p.x,
+            false => p.y,
+        };
+
+        let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
+        // resize if hash index is larger than table capacity
+        if hash > self.table.capacity() as u64 {
+            self.resize_with_capacity(hash as usize * 2);
+        }
+
+        self.insert_with_axis(p_value, p, hash)
+    }
+
+    /// Insert a point into the map along the given axis.
+    ///
+    /// # Arguments
+    /// * `p_value` - A float number represent the key of a 2d point
+    #[inline]
+    fn insert_with_axis(&mut self, p_value: F, p: Point<F>, hash: u64) -> Option<Point<F>> {
+        let mut insert_index = 0;
+        let bucket_index = self.table.bucket(hash);
+        let bucket = &mut self.table[bucket_index];
+        if self.hasher.sort_by_x() {
+            // Get index from the hasher
+            for ep in bucket.iter_mut() {
+                if ep == &mut p.clone() {
+                    return Some(mem::replace(ep, p));
+                }
+                if ep.x < p.x {
+                    insert_index += 1;
+                }
+            }
+        } else {
+            for ep in bucket.iter_mut() {
+                if ep == &mut p.clone() {
+                    return Some(mem::replace(ep, p));
+                }
+                if ep.y < p_value {
+                    insert_index += 1;
+                }
+            }
+        }
+        bucket.insert(insert_index, p);
+        self.items += 1;
+        None
+    }
+
+    /// Fit the input data into the model of the hasher. Returns Error if error occurred during
+    /// model fitting.
+    ///
+    /// # Arguments
+    ///
+    /// * `xs` - A list of tuple of floating number
+    /// * `ys` - A list of tuple of floating number
+    #[inline]
+    pub fn model_fit(&mut self, xs: &[F], ys: &[F]) -> Result<(), Error> {
+        self.hasher.model.fit(xs, ys)
+    }
+
+    /// Fit the input data into the model of the hasher. Returns Error if error occurred during
+    /// model fitting.
+    ///
+    /// # Arguments
+    /// * `data` - A list of tuple of floating number
+    #[inline]
+    pub fn model_fit_tuple(&mut self, data: &[(F, F)]) -> Result<(), Error> {
+        self.hasher.model.fit_tuple(data)
+    }
+
+    /// Inner function for batch insert
+    #[inline]
+    fn batch_insert_inner(&mut self, ps: &[Point<F>]) {
+        // Allocate table capacity before insert
+        let n = ps.len();
+        self.resize_with_capacity(n);
+        for p in ps.iter() {
+            self.insert_inner(*p);
+        }
+    }
+
+    /// Batch insert a batch of 2d data into the map.
+    ///
+    /// # Arguments
+    /// * `ps` - A list of point number
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lsph::{LearnedHashMap, LinearModel};
+    /// let point_data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
+    /// let (mut map, points) = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&point_data).unwrap();
+    ///
+    /// assert_eq!(map.get(&[1., 1.]).is_some(), true);
+    /// ```
+    #[inline]
+    pub fn batch_insert(&mut self, ps: &mut [Point<F>]) -> Result<(), Error> {
+        // Select suitable axis for training
+        use crate::geometry::Axis;
+        use crate::models::Trainer;
+
+        // Loading data into trainer
+        if let Ok(trainer) = Trainer::with_points(ps) {
+            trainer.train(&mut self.hasher.model).unwrap();
+            let axis = trainer.axis();
+            match axis {
+                Axis::X => self.hasher.set_sort_by_x(true),
+                _ => self.hasher.set_sort_by_x(false),
+            };
+
+            // Fit the data into model
+            self.model_fit(trainer.train_x(), trainer.train_y())
+                .unwrap();
+            // Batch insert into the map
+            self.batch_insert_inner(ps);
+        }
+        Ok(())
     }
 
     /// Range search finds all points for a given 2d range
@@ -495,181 +693,6 @@ where
         }
 
         Some(nearest_neighbor)
-    }
-}
-
-impl<M, F> LearnedHashMap<M, F>
-where
-    F: Float + AsPrimitive<u64> + FromPrimitive + Default + Debug + Sum,
-    M: Model<F = F> + Default + Clone,
-{
-    /// Returns a default LearnedHashMap with Model and Float type
-    ///
-    /// # Arguments
-    /// * `data` - A Vec<[F; 2]> of 2d points for the map
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use lsph::{LearnedHashMap, LinearModel};
-    /// let data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
-    /// let map = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&data);
-    /// ```
-    #[inline]
-    pub fn with_data(data: &Vec<[F; 2]>) -> Result<(Self, Vec<Point<F>>), Error> {
-        use crate::helper::convert_to_points;
-        let mut map = LearnedHashMap::with_capacity(data.len());
-        let mut ps = convert_to_points(data).unwrap();
-        match map.batch_insert(&mut ps) {
-            Ok(()) => Ok((map, ps)),
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Insert a point into the map.
-    ///
-    /// # Arguments
-    /// * `p` - A Point<F> with float number
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use lsph::{LearnedHashMap, LinearModel, Point};
-    /// let a: Point<f64> = Point::new(0., 1.);
-    /// let b: Point<f64> = Point::new(1., 0.);
-
-    /// let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-    /// map.insert(a);
-    /// map.insert(b);
-
-    /// assert_eq!(map.items(), 2);
-    /// assert_eq!(map.get(&[0., 1.]).unwrap(), &a);
-    /// assert_eq!(map.get(&[1., 0.]).unwrap(), &b);
-    /// ```
-    #[inline]
-    pub fn insert(&mut self, p: Point<F>) -> Option<Point<F>> {
-        // Resize if the table is empty or 3/4 size of the table is full
-        if self.table.is_empty() || self.items() > 3 * self.table.len() / 4 {
-            self.resize();
-        }
-
-        // Find where to put the key at second bucket
-        let p_value = match self.hasher.sort_by_x() {
-            true => p.x,
-            false => p.y,
-        };
-
-        let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
-        if hash > self.table.capacity() as u64 {
-            self.resize_with_capacity(hash as usize * 2);
-        }
-
-        self.insert_with_axis(p_value, p, hash)
-    }
-
-    /// Insert a point into the map along the given axis.
-    ///
-    /// # Arguments
-    /// * `p_value` - A float number represent the key of a 2d point
-    #[inline]
-    fn insert_with_axis(&mut self, p_value: F, p: Point<F>, hash: u64) -> Option<Point<F>> {
-        let mut insert_index = 0;
-        let bucket_index = self.table.bucket(hash);
-        let bucket = &mut self.table[bucket_index];
-        if self.hasher.sort_by_x() {
-            // Get index from the hasher
-            for ep in bucket.iter_mut() {
-                if ep == &mut p.clone() {
-                    return Some(mem::replace(ep, p));
-                }
-                if ep.x < p.x {
-                    insert_index += 1;
-                }
-            }
-        } else {
-            for ep in bucket.iter_mut() {
-                if ep == &mut p.clone() {
-                    return Some(mem::replace(ep, p));
-                }
-                if ep.y < p_value {
-                    insert_index += 1;
-                }
-            }
-        }
-        bucket.insert(insert_index, p);
-        self.items += 1;
-        None
-    }
-
-    /// Fit the input data into the model of the hasher. Returns Error if error occurred during
-    /// model fitting.
-    ///
-    /// # Arguments
-    ///
-    /// * `xs` - A list of tuple of floating number
-    /// * `ys` - A list of tuple of floating number
-    #[inline]
-    pub fn model_fit(&mut self, xs: &[F], ys: &[F]) -> Result<(), Error> {
-        self.hasher.model.fit(xs, ys)
-    }
-
-    /// Fit the input data into the model of the hasher. Returns Error if error occurred during
-    /// model fitting.
-    ///
-    /// # Arguments
-    /// * `data` - A list of tuple of floating number
-    #[inline]
-    pub fn model_fit_tuple(&mut self, data: &[(F, F)]) -> Result<(), Error> {
-        self.hasher.model.fit_tuple(data)
-    }
-
-    /// Inner function for batch insert
-    #[inline]
-    fn _batch_insert_inner(&mut self, ps: &[Point<F>]) {
-        // Allocate table capacity before insert
-        let n = ps.len();
-        self.resize_with_capacity(n);
-        for p in ps.iter() {
-            self.insert(*p);
-        }
-    }
-
-    /// Batch insert a batch of 2d data into the map.
-    ///
-    /// # Arguments
-    /// * `ps` - A list of point number
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use lsph::{LearnedHashMap, LinearModel};
-    /// let point_data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
-    /// let (mut map, points) = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&point_data).unwrap();
-    ///
-    /// assert_eq!(map.get(&[1., 1.]).is_some(), true);
-    /// ```
-    #[inline]
-    pub fn batch_insert(&mut self, ps: &mut [Point<F>]) -> Result<(), Error> {
-        // Select suitable axis for training
-        use crate::geometry::Axis;
-        use crate::models::Trainer;
-
-        // Loading data into trainer
-        if let Ok(trainer) = Trainer::with_points(ps) {
-            trainer.train(&mut self.hasher.model).unwrap();
-            let axis = trainer.axis();
-            match axis {
-                Axis::X => self.hasher.set_sort_by_x(true),
-                _ => self.hasher.set_sort_by_x(false),
-            };
-
-            // Fit the data into model
-            self.model_fit(&trainer.train_x(), &trainer.train_y())
-                .unwrap();
-            // Batch insert into the map
-            self._batch_insert_inner(ps);
-        }
-        Ok(())
     }
 }
 

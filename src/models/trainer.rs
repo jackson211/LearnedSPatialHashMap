@@ -125,10 +125,10 @@ where
         // set train_x to data with larger variance
         let (axis, train_x) = if x_variance > y_variance {
             sort_by_x(ps);
-            (Axis::X, extract_x(&ps))
+            (Axis::X, extract_x(ps))
         } else {
             sort_by_y(ps);
-            (Axis::Y, extract_y(&ps))
+            (Axis::Y, extract_y(ps))
         };
         let train_y: Vec<F> = (0..ps.len()).map(|id| F::from_usize(id).unwrap()).collect();
         Ok(Self {
