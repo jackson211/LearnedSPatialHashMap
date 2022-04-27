@@ -602,7 +602,7 @@ where
         }
     }
 
-    /// Nearest neighbor search for the cloest point for given query point
+    /// Nearest neighbor search for the closest point for given query point
     /// Returns the closest point
     ///```text
     ///      |
