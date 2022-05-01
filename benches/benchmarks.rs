@@ -64,8 +64,8 @@ fn locate_unsuccessful(c: &mut Criterion) {
     c.bench_function("locate_at_point (unsuccessful)", move |b| {
         b.iter(|| map.get(&query_point).is_none())
     })
-    .bench_function("locate_at_point_f32 (successful)", move |b| {
-        b.iter(|| map_f32.get(&query_point_f32).is_some())
+    .bench_function("locate_at_point_f32 (unsuccessful)", move |b| {
+        b.iter(|| map_f32.get(&query_point_f32).is_none())
     });
 }
 

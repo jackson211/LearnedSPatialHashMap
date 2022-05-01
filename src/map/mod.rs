@@ -166,7 +166,6 @@ where
     /// assert_eq!(map.find_by_hash(0, &[1., 1.]).is_some(), true);
     /// assert_eq!(map.find_by_hash(1, &[1., 1.]).is_none(), true);
     /// ```
-    #[inline]
     pub fn find_by_hash(&self, hash: usize, p: &[F; 2]) -> Option<&Point<F>> {
         self.table[hash]
             .iter()
@@ -303,15 +302,8 @@ where
         if self.table.is_empty() || self.items() > 3 * self.table.len() / 4 {
             self.resize();
         }
-
-        // Find where to put the key at second bucket
-        let p_value = match self.hasher.sort_by_x() {
-            true => p.x,
-            false => p.y,
-        };
-
         let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
-        self.insert_with_axis(p_value, p, hash)
+        self.insert_with_axis(p, hash)
     }
 
     /// Sequencial insert a point into the map.
@@ -340,17 +332,11 @@ where
             self.resize();
         }
 
-        // Find where to put the key at second bucket
-        let p_value = match self.hasher.sort_by_x() {
-            true => p.x,
-            false => p.y,
-        };
-
         let hash = make_hash_point::<M, F>(&mut self.hasher, &[p.x, p.y]);
         // resize if hash index is larger or equal to the table capacity
         if hash >= self.table.capacity() as u64 {
             self.resize_with_capacity(hash as usize * 2);
-            self.insert_with_axis(p_value, p, hash);
+            self.insert_with_axis(p, hash);
             match self.rehash() {
                 Ok(_) => None,
                 Err(err) => {
@@ -359,7 +345,7 @@ where
                 }
             }
         } else {
-            self.insert_with_axis(p_value, p, hash)
+            self.insert_with_axis(p, hash)
         }
     }
 
@@ -368,7 +354,7 @@ where
     /// # Arguments
     /// * `p_value` - A float number represent the key of a 2d point
     #[inline]
-    fn insert_with_axis(&mut self, p_value: F, p: Point<F>, hash: u64) -> Option<Point<F>> {
+    fn insert_with_axis(&mut self, p: Point<F>, hash: u64) -> Option<Point<F>> {
         let mut insert_index = 0;
         let bucket_index = self.table.bucket(hash);
         let bucket = &mut self.table[bucket_index];
@@ -378,7 +364,7 @@ where
                 if ep == &mut p.clone() {
                     return Some(mem::replace(ep, p));
                 }
-                if ep.x < p.x {
+                if ep.y < p.y() {
                     insert_index += 1;
                 }
             }
@@ -387,7 +373,7 @@ where
                 if ep == &mut p.clone() {
                     return Some(mem::replace(ep, p));
                 }
-                if ep.y < p_value {
+                if ep.x < p.x() {
                     insert_index += 1;
                 }
             }
