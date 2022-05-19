@@ -1,6 +1,6 @@
 use crate::geometry::Point;
+use core::marker::PhantomData;
 use num_traits::float::Float;
-use std::marker::PhantomData;
 
 /// Distance trait for measuring the distance between two points
 pub trait Distance {

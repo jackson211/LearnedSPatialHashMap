@@ -3,9 +3,9 @@ use crate::{
     models::{stats::root_mean_squared_error, Model},
 };
 
+use core::fmt::Debug;
 use core::iter::Sum;
 use num_traits::{cast::FromPrimitive, float::Float};
-use std::fmt::Debug;
 
 /// Simple linear regression from tuples.
 ///
