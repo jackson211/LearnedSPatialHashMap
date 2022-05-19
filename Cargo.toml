@@ -20,6 +20,7 @@ smallvec = "1.8.0"
 rand = "0.8.5"
 rand_hc = "0.3.1"
 criterion = { version = "0.3.5", features = ["html_reports"] }
+kiss3d = "0.34.0"
 
 [[bench]]
 name = "benchmarks"

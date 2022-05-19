@@ -8,14 +8,12 @@ use crate::{
     map::{nn::*, table::*},
     models::Model,
 };
-use core::iter::Sum;
-use core::mem;
+use core::{fmt::Debug, iter::Sum, mem};
 use num_traits::{
     cast::{AsPrimitive, FromPrimitive},
     float::Float,
 };
 use std::collections::BinaryHeap;
-use std::fmt::Debug;
 
 /// Initial bucket size is set to 1
 const INITIAL_NBUCKETS: usize = 1;

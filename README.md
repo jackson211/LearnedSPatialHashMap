@@ -3,8 +3,8 @@
 fast 2d point query powered by hashmap and statistic model
 
 ![Github Workflow](https://github.com/jackson211/lsph/actions/workflows/rust.yml/badge.svg)
-![crates.io version](https://img.shields.io/crates/v/lsph)
-![dos.io](https://img.shields.io/docsrs/lsph)
+[![crates.io version](https://img.shields.io/crates/v/lsph)](https://crates.io/crates/lsph)
+[![dos.io](https://img.shields.io/docsrs/lsph)](https://docs.rs/lsph)
 
 The original paper of LSPH can be found [here].
 
