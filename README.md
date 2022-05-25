@@ -1,10 +1,11 @@
 # [LSPH](https://crates.io/crates/lsph) - Learned SPatial HashMap
 
-fast 2d point query powered by hashmap and statistic model
+**fast 2d point query powered by hashmap and statistic model**
 
 ![Github Workflow](https://github.com/jackson211/lsph/actions/workflows/rust.yml/badge.svg)
 [![crates.io version](https://img.shields.io/crates/v/lsph)](https://crates.io/crates/lsph)
 [![dos.io](https://img.shields.io/docsrs/lsph)](https://docs.rs/lsph)
+[![dependency status](https://deps.rs/repo/github/jackson211/lsph/status.svg)](https://deps.rs/repo/github/jackson211/lsph)
 
 The original paper of LSPH can be found [here].
 
@@ -21,7 +22,7 @@ The LSPH supports:
 - Radius Range Query
 - Nearest Neighbor Query
 
-Example:
+## Example:
 
 ```rust
 use lsph::{LearnedHashMap, LinearModel};
@@ -35,7 +36,7 @@ assert_eq!(map.radius_range(&[2., 1.], 1.).is_some(), true);
 assert_eq!(map.nearest_neighbor(&[2., 1.]).is_some(), true);
 ```
 
-To Run Benchmark:
+## To Run Benchmark:
 
 ```bash
 cargo bench
