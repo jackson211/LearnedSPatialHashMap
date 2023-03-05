@@ -231,8 +231,8 @@ mod tests {
         let mut model = LinearModel::new();
         model.fit(&x_values, &y_values).unwrap();
 
-        assert_delta_f32!(0.8, model.coefficient, 0.00001);
-        assert_delta_f32!(0.4, model.intercept, 0.00001);
+        assert_delta!(0.8, model.coefficient, 0.00001);
+        assert_delta!(0.4, model.intercept, 0.00001);
     }
 
     #[test]
