@@ -338,7 +338,7 @@ where
             match self.rehash() {
                 Ok(_) => None,
                 Err(err) => {
-                    eprintln!("{:?}", err);
+                    eprintln!("{err:?}");
                     None
                 }
             }
@@ -482,7 +482,7 @@ where
     ) -> Option<Vec<Point<F>>> {
         let mut right_hash = make_hash_point(&mut self.hasher, top_right) as usize;
         if right_hash > self.table.capacity() {
-            right_hash = self.table.capacity() as usize - 1;
+            right_hash = self.table.capacity() - 1;
         }
         let left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
@@ -559,16 +559,13 @@ where
                 });
             }
         }
-        match heap.pop() {
-            Some(v) => {
-                let local_min_d = v.distance;
-                // Update the nearest neighbour and minimum distance
-                if &local_min_d < min_d {
-                    *nearest_neighbor = v.point;
-                    *min_d = local_min_d;
-                }
+        if let Some(v) = heap.pop() {
+            let local_min_d = v.distance;
+            // Update the nearest neighbour and minimum distance
+            if &local_min_d < min_d {
+                *nearest_neighbor = v.point;
+                *min_d = local_min_d;
             }
-            None => (),
         }
     }
 
