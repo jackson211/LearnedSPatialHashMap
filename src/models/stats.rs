@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn mean_empty_vec_f32() {
         let values: Vec<f32> = vec![];
-        assert_delta_f32!(0., mean(&values), 0.00001);
+        assert_delta!(0., mean(&values), 0.00001);
     }
 
     #[test]
@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn mean_1_to_5_f32() {
         let values: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_delta_f32!(3., mean(&values), 0.00001);
+        assert_delta!(3., mean(&values), 0.00001);
     }
 
     #[test]
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn variance_empty_vec_f32() {
         let values: Vec<f32> = vec![];
-        assert_delta_f32!(0., variance(&values), 0.00001);
+        assert_delta!(0., variance(&values), 0.00001);
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn variance_1_to_5_f32() {
         let values: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_delta_f32!(2., variance(&values), 0.00001);
+        assert_delta!(2., variance(&values), 0.00001);
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod tests {
     fn covariance_empty_vec_f32() {
         let x_values: Vec<f32> = vec![];
         let y_values: Vec<f32> = vec![];
-        assert_delta_f32!(0., covariance(&x_values, &y_values), 0.00001);
+        assert_delta!(0., covariance(&x_values, &y_values), 0.00001);
     }
 
     #[test]
@@ -158,7 +158,7 @@ mod tests {
     fn covariance_1_to_5_f32() {
         let x_values: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let y_values: Vec<f32> = vec![1.0, 3.0, 2.0, 3.0, 5.0];
-        assert_delta_f32!(1.6, covariance(&x_values, &y_values), 0.00001);
+        assert_delta!(1.6, covariance(&x_values, &y_values), 0.00001);
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod tests {
     fn negative_covariance_1_to_5_f32() {
         let x_values: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let y_values: Vec<f32> = vec![0.5, 4.0, 1.0, -5.0, 4.0];
-        assert_delta_f32!(-0.4, covariance(&x_values, &y_values), 0.00001);
+        assert_delta!(-0.4, covariance(&x_values, &y_values), 0.00001);
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod tests {
     fn mean_squared_error_test_f32() {
         let actual: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let predict: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_delta_f32!(0., mean_squared_error(&actual, &predict), 0.00001);
+        assert_delta!(0., mean_squared_error(&actual, &predict), 0.00001);
     }
 
     #[test]
@@ -200,6 +200,6 @@ mod tests {
     fn mean_squared_error_test_2_f32() {
         let actual: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let predict: Vec<f32> = vec![1.0, 1.6, 3.0, 4.0, 5.0];
-        assert_delta_f32!(0.032, mean_squared_error(&actual, &predict), 0.00001);
+        assert_delta!(0.032, mean_squared_error(&actual, &predict), 0.00001);
     }
 }
