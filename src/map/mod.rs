@@ -337,8 +337,7 @@ where
             self.insert_with_axis(p, hash);
             match self.rehash() {
                 Ok(_) => None,
-                Err(err) => {
-                    eprintln!("{:?}", err);
+                Err(_err) => {
                     None
                 }
             }
@@ -452,8 +451,8 @@ where
         Ok(())
     }
 
-    /// Range search finds all points for a given 2d range
-    /// Returns all the points within the given range
+    /// Range search finds all points for a given 2d range.
+    /// Returns all the points within the given range.
     /// ```text
     ///      |                    top right
     ///      |        .-----------*
@@ -470,10 +469,10 @@ where
     /// # Arguments
     ///
     /// * `bottom_left` - A tuple containing a pair of points that represent the bottom left of the
-    /// range.
+    ///   range.
     ///
     /// * `top_right` - A tuple containing a pair of points that represent the top right of the
-    /// range.
+    ///   range.
     #[inline]
     pub fn range_search(
         &mut self,
@@ -482,7 +481,7 @@ where
     ) -> Option<Vec<Point<F>>> {
         let mut right_hash = make_hash_point(&mut self.hasher, top_right) as usize;
         if right_hash > self.table.capacity() {
-            right_hash = self.table.capacity() as usize - 1;
+            right_hash = self.table.capacity() - 1;
         }
         let left_hash = make_hash_point(&mut self.hasher, bottom_left) as usize;
         if left_hash > self.table.capacity() || left_hash > right_hash {
@@ -539,7 +538,7 @@ where
     /// * `query_point` - A Point data
     /// * `min_d` - minimum distance
     /// * `nearest_neighbor` - mutable borrow of an point data, which is the nearest neighbor at
-    /// search index bucket
+    ///   search index bucket
     #[inline]
     fn local_min_heap(
         &self,
@@ -559,16 +558,13 @@ where
                 });
             }
         }
-        match heap.pop() {
-            Some(v) => {
-                let local_min_d = v.distance;
-                // Update the nearest neighbour and minimum distance
-                if &local_min_d < min_d {
-                    *nearest_neighbor = v.point;
-                    *min_d = local_min_d;
-                }
+        if let Some(v) = heap.pop() {
+            let local_min_d = v.distance;
+            // Update the nearest neighbour and minimum distance
+            if &local_min_d < min_d {
+                *nearest_neighbor = v.point;
+                *min_d = local_min_d;
             }
-            None => (),
         }
     }
 
@@ -834,7 +830,7 @@ mod tests {
     fn with_data() {
         let data = vec![[1., 1.], [2., 1.], [3., 2.], [4., 4.]];
         let (mut map, _points) = LearnedHashMap::<LinearModel<f64>, f64>::with_data(&data).unwrap();
-        assert_eq!(map.get(&[1., 1.]).is_some(), true);
+        assert!(map.get(&[1., 1.]).is_some());
     }
 
     #[test]
@@ -848,7 +844,6 @@ mod tests {
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.batch_insert(&mut data).unwrap();
-        dbg!(&map);
 
         assert_delta!(1.02272, map.hasher.model.coefficient, 0.00001);
         assert_delta!(-0.86363, map.hasher.model.intercept, 0.00001);
@@ -873,14 +868,13 @@ mod tests {
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.batch_insert(&mut data).unwrap();
-        dbg!(&map);
 
         let a: Point<f64> = Point::new(10., 10.);
-        map.insert(a.clone());
+        map.insert(a);
         assert_eq!(Some(&a), map.get(&[10., 10.]));
 
         let b: Point<f64> = Point::new(100., 100.);
-        map.insert(b.clone());
+        map.insert(b);
         assert_eq!(Some(&b), map.get(&[100., 100.]));
         assert_eq!(None, map.get(&[100., 101.]));
     }
@@ -896,7 +890,7 @@ mod tests {
         ];
         let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
         map.batch_insert(&mut data).unwrap();
-        // dbg!(&map);
+
 
         let found: Vec<Point<f64>> =
             vec![Point::new(1., 1.), Point::new(2., 2.), Point::new(3., 3.)];
@@ -916,12 +910,11 @@ mod tests {
         map.batch_insert(&mut points.clone()).unwrap();
 
         let sample_points = create_random_point_type_points(100, SEED_2);
-        let mut i = 0;
-        for sample_point in &sample_points {
+        for sample_point in sample_points.iter() {
             let mut nearest = None;
-            let mut closest_dist = ::core::f64::INFINITY;
+            let mut closest_dist = f64::INFINITY;
             for point in &points {
-                let new_dist = Euclidean::distance_point(&point, &sample_point);
+                let new_dist = Euclidean::distance_point(point, sample_point);
                 if new_dist < closest_dist {
                     closest_dist = new_dist;
                     nearest = Some(point);
@@ -931,7 +924,6 @@ mod tests {
                 .nearest_neighbor(&[sample_point.x, sample_point.y])
                 .unwrap();
             assert_eq!(nearest.unwrap(), &map_nearest);
-            i = i + 1;
         }
     }
 }

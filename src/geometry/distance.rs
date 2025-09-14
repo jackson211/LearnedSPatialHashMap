@@ -58,7 +58,7 @@ mod tests {
         let a = Point::<f32> { x: 0., y: 0. };
         let b = Point::<f32> { x: 1., y: 1. };
         let d = Euclidean::distance_point(&a, &b);
-        assert_delta!(d, 1.4142135, 0.00001);
+        assert_delta!(d, std::f32::consts::SQRT_2, 0.00001);
     }
 
     #[test]
@@ -66,7 +66,7 @@ mod tests {
         let a = Point::<f64> { x: 0., y: 0. };
         let b = Point::<f64> { x: 1., y: 1. };
         let d = Euclidean::distance_point(&a, &b);
-        assert_delta!(d, 1.4142135, 0.00001);
+        assert_delta!(d, std::f64::consts::SQRT_2, 0.00001);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-# [LSPH](https://crates.io/crates/lsph) - Learned SPatial HashMap
+# [LSPH](https://crates.io/crates/lsph) - Learned SPatial HashMap (LSPH)
 
 **fast 2d point query powered by hashmap and statistic model**
 
@@ -35,6 +35,47 @@ assert_eq!(map.range_search(&[0., 0.], &[3., 3.]).is_some(), true);
 assert_eq!(map.radius_range(&[2., 1.], 1.).is_some(), true);
 assert_eq!(map.nearest_neighbor(&[2., 1.]).is_some(), true);
 ```
+
+## Running Demos
+
+LSPH includes two comprehensive demo applications to showcase its capabilities:
+
+### Geographic Data Demo
+
+A command-line demo using real Melbourne geographic data (6,361 points):
+
+```bash
+cd examples/demo
+cargo run --release
+```
+
+Features:
+
+- Real-world geographic data processing
+- Performance benchmarking and analysis
+- Interactive nearest neighbor queries
+- Range query demonstrations
+- Memory usage and throughput metrics
+
+### Interactive GUI Demo
+
+A graphical demonstration with visual spatial operations:
+
+```bash
+cd examples/interactive_demo
+cargo run --release
+```
+
+![LSPH Interactive Demo](examples/interactive_demo/Screenshot.png)
+
+_Interactive demo showing nearest neighbor search with responsive UI and visual feedback_
+
+Features:
+
+- Visual point addition and management
+- Interactive nearest neighbor search
+- Range query visualization
+- Real-time performance metrics
 
 ## To Run Benchmark:
 

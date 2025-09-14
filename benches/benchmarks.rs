@@ -4,8 +4,7 @@ extern crate criterion;
 use criterion::Criterion;
 use lsph::geometry::Point;
 use lsph::{map::LearnedHashMap, models::LinearModel};
-use rand::{Rng, SeedableRng};
-use rand_hc::Hc128Rng;
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 const SEED_1: &[u8; 32] = b"Gv0aHMtHkBGsUXNspGU9fLRuCWkZWHZx";
 const SEED_2: &[u8; 32] = b"km7DO4GeaFZfTcDXVpnO7ZJlgUY7hZiS";
@@ -14,20 +13,18 @@ const DEFAULT_BENCHMARK_TREE_SIZE: usize = 2000;
 
 fn bulk_load_baseline(c: &mut Criterion) {
     c.bench_function("Bulk load baseline", move |b| {
-        let mut points: Vec<_> =
-            create_random_point_type_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
-        let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
-
         b.iter(|| {
+            let mut points: Vec<_> =
+                create_random_point_type_points(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
+            let mut map = LearnedHashMap::<LinearModel<f64>, f64>::new();
             map.batch_insert(&mut points).unwrap();
         });
     })
     .bench_function("Bulk load baseline with f32", move |b| {
-        let mut points: Vec<_> =
-            create_random_point_type_points_f32(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
-        let mut map = LearnedHashMap::<LinearModel<f32>, f32>::new();
-
         b.iter(|| {
+            let mut points: Vec<_> =
+                create_random_point_type_points_f32(DEFAULT_BENCHMARK_TREE_SIZE, SEED_1);
+            let mut map = LearnedHashMap::<LinearModel<f32>, f32>::new();
             map.batch_insert(&mut points).unwrap();
         });
     });
@@ -80,7 +77,7 @@ fn nearest_neighbor(c: &mut Criterion) {
     c.bench_function("nearest_neigbor", move |b| {
         b.iter(|| {
             for query_point in &query_points {
-                map.nearest_neighbor(&query_point).unwrap();
+                map.nearest_neighbor(query_point).unwrap();
             }
         });
     });
@@ -100,7 +97,7 @@ fn radius_range(c: &mut Criterion) {
         c.bench_function(title.as_str(), |b| {
             b.iter(|| {
                 for query_point in &query_points {
-                    map.radius_range(&query_point, radius).unwrap();
+                    map.radius_range(query_point, radius).unwrap();
                 }
             });
         });
@@ -119,9 +116,9 @@ criterion_main!(benches);
 
 fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<[f64; 2]> {
     let mut result = Vec::with_capacity(num_points);
-    let mut rng = Hc128Rng::from_seed(*seed);
+    let mut rng = SmallRng::from_seed(*seed);
     for _ in 0..num_points {
-        result.push([rng.gen(), rng.gen()]);
+        result.push([rng.random(), rng.random()]);
     }
     result
 }

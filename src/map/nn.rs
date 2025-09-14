@@ -19,8 +19,7 @@ where
     F: Float,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // We flip the ordering on distance, so the queue becomes a min-heap
-        other.distance.partial_cmp(&self.distance)
+        Some(self.cmp(other))
     }
 }
 
@@ -29,6 +28,7 @@ where
     F: Float,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        // We flip the ordering on distance, so the queue becomes a min-heap
+        other.distance.partial_cmp(&self.distance).unwrap_or(Ordering::Equal)
     }
 }

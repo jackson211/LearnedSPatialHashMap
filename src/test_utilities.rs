@@ -1,6 +1,5 @@
 use crate::geometry::*;
-use rand::{Rng, SeedableRng};
-use rand_hc::Hc128Rng;
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 pub type Seed = [u8; 32];
 
@@ -9,9 +8,9 @@ pub const SEED_2: &Seed = b"4KbTVjPT4DXSwWAsQM5dkWWywPKZRfCX";
 
 pub fn create_random_points(num_points: usize, seed: &[u8; 32]) -> Vec<(f64, f64)> {
     let mut result = Vec::with_capacity(num_points);
-    let mut rng = Hc128Rng::from_seed(*seed);
+    let mut rng = SmallRng::from_seed(*seed);
     for _ in 0..num_points {
-        result.push((rng.gen(), rng.gen()));
+        result.push((rng.random(), rng.random()));
     }
     result
 }
